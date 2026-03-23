@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#B85432">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Chifa Suki">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Chifa Suki – Pedidos</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+/* ─── RESET ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a1a; font-size: 15px; }
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+
+/* ─── VARIABLES ─── */
+:root {
+  --brand: #B85432;
+  --brand-dark: #993C1D;
+  --brand-light: #FAECE7;
+  --bg: #ffffff;
+  --bg2: #f5f4f0;
+  --bg3: #ede9e4;
+  --text: #1a1a1a;
+  --text2: #6b6b6b;
+  --text3: #aaa;
+  --border: rgba(0,0,0,0.10);
+  --border2: rgba(0,0,0,0.18);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ─── LAYOUT ─── */
+.app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* ─── TOPBAR ─── */
+.topbar { background: var(--brand); color: white; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.topbar h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.3px; }
+.topbar p { font-size: 11px; opacity: 0.8; margin-top: 1px; }
+.topbar-right { display: flex; gap: 8px; }
+.topbar-btn { background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+.topbar-btn:active { background: rgba(255,255,255,0.35); }
+
+/* ─── DRAWER NAV ─── */
+.drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; }
+.drawer-overlay.open { display: block; }
+.drawer { position: fixed; top: 0; left: -260px; width: 260px; height: 100%; background: var(--bg); z-index: 501; transition: left 0.25s ease; box-shadow: 4px 0 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; }
+.drawer.open { left: 0; }
+.drawer-header { background: var(--brand); padding: 20px 16px 16px; color: white; }
+.drawer-title { font-size: 20px; font-weight: 700; }
+.drawer-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+.drawer-nav { flex: 1; padding: 10px 0; overflow-y: auto; }
+.dnav-btn { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 20px; border: none; background: none; cursor: pointer; color: var(--text); font-size: 15px; font-weight: 500; text-align: left; border-left: 3px solid transparent; }
+.dnav-btn:active { background: var(--bg2); }
+.dnav-btn.active { color: var(--brand); background: var(--brand-light); border-left-color: var(--brand); font-weight: 700; }
+.dnav-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+.dnav-divider { height: 0.5px; background: var(--border); margin: 8px 16px; }
+.hamburger { background: rgba(255,255,255,0.2); border: none; color: white; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.hamburger:active { background: rgba(255,255,255,0.35); }
+
+/* ─── SCREENS ─── */
+.screen { display: none; flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ─── MESAS SCREEN ─── */
+.screen-header { padding: 16px 16px 8px; font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+.mesas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 12px 20px; }
+.mesa-card { background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 10px; text-align: center; cursor: pointer; box-shadow: var(--shadow); transition: transform 0.1s; }
+.mesa-card:active { transform: scale(0.96); }
+.mesa-card.ocupada { border-color: var(--brand); background: var(--brand-light); }
+.mesa-num { font-size: 22px; font-weight: 700; color: var(--text); }
+.mesa-card.ocupada .mesa-num { color: var(--brand); }
+.mesa-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; margin-top: 4px; }
+.mesa-badge.libre { background: #e8f5e9; color: #388e3c; }
+.mesa-badge.ocup { background: var(--brand-light); color: var(--brand); }
+.mesa-info { font-size: 11px; color: var(--text2); margin-top: 5px; font-weight: 500; }
+.llevar-card { background: var(--bg); border: 1.5px solid #1565c0; border-radius: var(--radius); padding: 14px 10px; text-align: center; cursor: pointer; box-shadow: var(--shadow); transition: transform 0.1s; grid-column: span 3; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; }
+.llevar-card:active { transform: scale(0.98); }
+.llevar-card.activo { background: #e3f2fd; }
+.llevar-card-left { text-align: left; }
+.llevar-card-title { font-size: 16px; font-weight: 700; color: #1565c0; }
+.llevar-card-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.llevar-badge { display: inline-block; background: #e3f2fd; color: #1565c0; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+
+/* ─── PEDIDO SCREEN ─── */
+.pedido-screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.pedido-screen.active { display: flex; }
+
+/* Mesa selector strip */
+.mesa-strip { display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto; flex-shrink: 0; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+.mesa-strip::-webkit-scrollbar { display: none; }
+.mpill { padding: 5px 12px; border: 1.5px solid var(--border2); border-radius: 20px; font-size: 12px; background: none; cursor: pointer; white-space: nowrap; color: var(--text2); }
+.mpill.active { background: var(--brand); color: white; border-color: var(--brand); font-weight: 600; }
+.mpill.ocup:not(.active) { border-color: var(--brand); color: var(--brand); }
+
+/* Main tabs */
+.main-tabs { display: flex; background: var(--bg); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+.mtab { flex: 1; padding: 10px 4px; font-size: 11px; font-weight: 500; border: none; background: none; cursor: pointer; color: var(--text2); border-bottom: 2.5px solid transparent; }
+.mtab.active { color: var(--brand); border-bottom-color: var(--brand); background: #fdf8f6; }
+
+/* Split layout */
+.split { display: flex; flex: 1; overflow: hidden; }
+.menu-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 0.5px solid var(--border); }
+.order-col { width: 48%; display: flex; flex-direction: column; overflow: hidden; }
+
+/* On small screens (mobile) → full screen toggle between menu and order */
+@media (max-width: 600px) {
+  .split { flex-direction: column; position: relative; }
+  .menu-col { flex: 1; border-right: none; border-bottom: none; overflow: hidden; }
+  .order-col { display: none; width: 100%; }
+  .order-col.mob-active { display: flex; flex: 1; }
+  .menu-col.mob-hidden { display: none; }
+  .mob-toggle-bar { display: flex !important; }
+}
+.mob-toggle-bar { display: none; flex-shrink: 0; background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 6px 10px; gap: 6px; }
+.mob-toggle-btn { flex: 1; padding: 8px; border: 1.5px solid var(--border2); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; background: none; color: var(--text2); cursor: pointer; }
+.mob-toggle-btn.active { background: var(--brand); color: white; border-color: var(--brand); }
+
+/* Cat tabs */
+.cat-bar { display: flex; gap: 5px; padding: 8px 10px; overflow-x: auto; flex-shrink: 0; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+.cat-bar::-webkit-scrollbar { display: none; }
+.ctab { padding: 4px 10px; border: 1px solid var(--border2); border-radius: 20px; font-size: 11px; background: none; cursor: pointer; color: var(--text2); white-space: nowrap; }
+.ctab.active { background: var(--brand); color: white; border-color: var(--brand); }
+
+.menu-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.menu-items { padding: 6px 8px 16px; }
+.sec-title { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 6px 3px; }
+
+/* Menu item rows */
+.mrow { display: flex; align-items: center; padding: 8px 8px; border-radius: var(--radius-sm); gap: 8px; cursor: pointer; }
+.mrow:active { background: #f0ebe7; }
+.mrow-info { flex: 1; min-width: 0; }
+.mrow-name { font-size: 13px; color: var(--text); line-height: 1.3; }
+.mrow-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.mrow-price { font-size: 13px; font-weight: 600; color: var(--brand); white-space: nowrap; }
+.add-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--brand); color: white; border: none; font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.add-btn:active { background: var(--brand-dark); transform: scale(0.9); }
+.add-btn:disabled { opacity: 0.3; }
+
+/* Menu plate cards */
+.plate-card { margin: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.plate-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.plate-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.plate-price { font-size: 15px; font-weight: 700; color: var(--brand); white-space: nowrap; }
+.incl-badge { display: inline-block; background: var(--brand-light); color: var(--brand); font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-top: 5px; }
+.ent-label { font-size: 11px; color: var(--text2); margin: 8px 0 5px; }
+.ent-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.ent-btn { padding: 6px 14px; border: 1.5px solid var(--border2); border-radius: 20px; font-size: 12px; background: var(--bg); color: var(--text); cursor: pointer; }
+.ent-btn.sel { background: var(--brand); color: white; border-color: var(--brand); font-weight: 600; }
+.plate-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 0.5px solid var(--border); }
+.plate-hint { font-size: 11px; color: var(--text3); }
+.plate-hint.ready { color: #388e3c; font-weight: 500; }
+
+/* Order column */
+.order-header { padding: 10px 12px 8px; font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid var(--border); flex-shrink: 0; background: var(--bg); display: flex; justify-content: space-between; align-items: center; }
+.order-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 8px; }
+.orow { display: flex; align-items: flex-start; gap: 6px; padding: 7px 4px; border-bottom: 0.5px solid var(--border); }
+.orow:last-child { border-bottom: none; }
+.orow-name { flex: 1; font-size: 12px; color: var(--text); line-height: 1.4; }
+.orow-tag { font-size: 10px; color: var(--text3); }
+.qty-ctrl { display: flex; align-items: center; gap: 4px; margin-top: 1px; flex-shrink: 0; }
+.qbtn { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border2); background: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; color: var(--text2); }
+.qbtn:active { background: var(--bg3); }
+.qnum { font-size: 13px; font-weight: 600; min-width: 16px; text-align: center; }
+.orow-total { font-size: 12px; font-weight: 600; color: var(--text2); min-width: 44px; text-align: right; margin-top: 1px; flex-shrink: 0; }
+.del-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; padding: 0 2px; flex-shrink: 0; line-height: 1; }
+.del-btn:active { color: #e53935; }
+.empty-order { padding: 24px 16px; text-align: center; color: var(--text3); font-size: 13px; }
+
+/* Order footer */
+.order-footer { flex-shrink: 0; border-top: 0.5px solid var(--border); padding: 10px 12px; background: var(--bg); }
+.nota-in { width: 100%; border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 12px; color: var(--text); background: var(--bg2); margin-bottom: 8px; outline: none; }
+.nota-in:focus { border-color: var(--brand); }
+.total-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.footer-btns { display: flex; gap: 6px; }
+.btn-limpiar { flex: none; padding: 9px 12px; background: none; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; color: var(--text2); }
+.btn-confirmar { flex: 1; padding: 9px; background: var(--brand); color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-confirmar:active { background: var(--brand-dark); }
+.btn-cobrar { flex: 1; padding: 9px; background: #2e7d32; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-cobrar:active { background: #1b5e20; }
+.btn-share { flex: none; padding: 9px 10px; background: #1565c0; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-share:active { background: #0d47a1; }
+.print-btns { display: flex; gap: 6px; margin-bottom: 6px; }
+.btn-print-salon { flex: 1; padding: 7px; background: #1565c0; color: white; border: none; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; }
+.btn-print-cocina { flex: 1; padding: 7px; background: #2e7d32; color: white; border: none; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; }
+
+/* Extras */
+.extra-card { display: flex; align-items: center; gap: 10px; padding: 11px 12px; margin: 5px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+.extra-info { flex: 1; }
+.extra-name { font-size: 13px; color: var(--text); }
+.extra-price { font-size: 12px; color: var(--brand); font-weight: 600; margin-top: 2px; }
+
+/* Resumen screen */
+.res-section { background: var(--bg); margin: 0 12px 10px; border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+.res-mesa-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.res-item { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 2px 0; }
+.res-nota { font-size: 11px; color: var(--text3); font-style: italic; margin-bottom: 4px; }
+.res-total-global { margin: 0 12px 20px; background: var(--brand); color: white; border-radius: var(--radius); padding: 14px 16px; display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; }
+.res-print-btn { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 8px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
+
+/* ─── MODAL ─── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-box { background: var(--bg); border-radius: 20px 20px 0 0; padding: 20px 20px 32px; width: 100%; max-width: 480px; }
+@media (min-width: 601px) {
+  .modal-overlay { align-items: center; }
+  .modal-box { border-radius: var(--radius); max-width: 360px; padding: 20px; }
+}
+.modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
+.modal-close { float: right; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text2); margin-top: -2px; }
+.size-opt { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 6px; }
+.size-opt:active { border-color: var(--brand); background: var(--brand-light); }
+.size-opt-label { font-size: 14px; color: var(--text); }
+.size-opt-price { font-size: 14px; font-weight: 700; color: var(--brand); }
+
+/* ─── PRINT STYLES ─── */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: white !important; }
+  .app { display: none !important; }
+  .print-frame { display: block !important; }
+}
+.print-frame { display: none; }
+
+/* ─── INSTALL BANNER ─── */
+.install-banner { display: none; position: fixed; bottom: 70px; left: 12px; right: 12px; background: #1a1a1a; color: white; border-radius: var(--radius); padding: 12px 14px; z-index: 300; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.install-banner.hidden { display: none !important; }
+.install-banner p { font-size: 13px; flex: 1; line-height: 1.4; }
+.install-banner p span { font-weight: 600; color: #ffcc80; }
+.btn-install { background: var(--brand); color: white; border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-install-close { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 20px; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+
+<!-- INSTALL BANNER -->
+<div class="install-banner hidden" id="install-banner">
+  <p>Instala <span>Chifa Suki</span> en tu celular para usarla sin internet</p>
+  <button class="btn-install" id="btn-install">Instalar</button>
+  <button class="btn-install-close" onclick="document.getElementById('install-banner').classList.add('hidden')">×</button>
+</div>
+
+<!-- PRINT FRAME -->
+<div class="print-frame" id="print-frame"></div>
+
+<!-- MODAL TAMAÑO -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div id="modal-options"></div>
+  </div>
+</div>
+
+<!-- MODAL WANTAN FRITO (cantidad libre) -->
+<div class="modal-overlay" id="modal-wantan">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeWantanModal()">×</button>
+    <div class="modal-title">Wantan Frito</div>
+    <div class="modal-sub" style="margin-bottom:16px;">S/ 1.00 por unidad — elige cuántos quieres</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px;">
+      <button onclick="wantanChg(-1)" style="width:44px;height:44px;border-radius:50%;border:1.5px solid var(--border2);background:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+      <div style="text-align:center;">
+        <div id="wantan-qty" style="font-size:36px;font-weight:700;color:var(--brand);min-width:60px;">1</div>
+        <div style="font-size:12px;color:var(--text2);">unidades</div>
+      </div>
+      <button onclick="wantanChg(1)" style="width:44px;height:44px;border-radius:50%;background:var(--brand);color:white;border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:0.5px solid var(--border);margin-bottom:14px;">
+      <span style="font-size:14px;color:var(--text2);">Total:</span>
+      <span id="wantan-total" style="font-size:18px;font-weight:700;color:var(--brand);">S/ 1.00</span>
+    </div>
+    <!-- accesos rápidos -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      <button onclick="wantanSet(6)" style="flex:1;padding:7px;border:1px solid var(--border2);border-radius:8px;font-size:12px;background:none;cursor:pointer;">6 uds<br><span style="color:var(--brand);font-weight:600;">S/6</span></button>
+      <button onclick="wantanSet(12)" style="flex:1;padding:7px;border:1px solid var(--border2);border-radius:8px;font-size:12px;background:none;cursor:pointer;">Docena<br><span style="color:var(--brand);font-weight:600;">S/12</span></button>
+    </div>
+    <button onclick="confirmWantan()" style="width:100%;padding:12px;background:var(--brand);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;">Agregar al pedido</button>
+  </div>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-title">Chifa Suki</div>
+    <div class="drawer-sub" id="drawer-sync">⏳ Conectando...</div>
+  </div>
+  <div class="drawer-nav">
+    <button class="dnav-btn active" id="dnav-mesas" onclick="showScreen('mesas');closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Mesas
+    </button>
+    <button class="dnav-btn" id="dnav-pedido" onclick="showScreen('pedido');closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Tomar pedido
+    </button>
+    <button class="dnav-btn" id="dnav-llevar" onclick="showScreen('llevar');closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Para llevar
+    </button>
+    <div class="dnav-divider"></div>
+    <button class="dnav-btn" id="dnav-resumen" onclick="showScreen('resumen');closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Ventas del día
+    </button>
+    <button class="dnav-btn" id="dnav-historial" onclick="showScreen('historial');closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Historial
+    </button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="hamburger" onclick="openDrawer()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+      <div>
+        <h1 id="topbar-title">Mesas</h1>
+        <p id="sync-status">⏳ Conectando...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+
+  <!-- MESAS -->
+  <div class="screen active" id="scr-mesas">
+    <div class="screen-header">Mesas — toca para gestionar</div>
+    <div class="mesas-grid" id="mesas-grid"></div>
+    <div class="screen-header" style="margin-top:4px;">Para llevar</div>
+    <div class="mesas-grid" id="ordenes-grid" style="padding-bottom:20px;"></div>
+  </div>
+
+  <!-- PEDIDO -->
+  <div class="screen pedido-screen" id="scr-pedido">
+    <!-- Mesa strip -->
+    <div class="mesa-strip" id="mesa-strip"></div>
+    <!-- Main tabs -->
+    <div class="main-tabs">
+      <button class="mtab active" onclick="switchTab(0,this)">Menú+entrada</button>
+      <button class="mtab" onclick="switchTab(1,this)">A la carta</button>
+      <button class="mtab" onclick="switchTab(2,this)">Bebidas</button>
+      <button class="mtab" onclick="switchTab(3,this)">Extras</button>
+    </div>
+    <!-- Mobile toggle bar -->
+    <div class="mob-toggle-bar" id="mob-toggle-bar">
+      <button class="mob-toggle-btn" id="mob-btn-back" onclick="showScreen('mesas')" style="flex:none;padding:8px 12px;font-size:18px;">←</button>
+      <button class="mob-toggle-btn active" id="mob-btn-menu" onclick="mobToggle('menu')">Agregar platos</button>
+      <button class="mob-toggle-btn" id="mob-btn-pedido" onclick="mobToggle('pedido')">Pedido (<span id="mob-order-count">0</span>)</button>
+    </div>
+    <!-- Split -->
+    <div class="split">
+      <div class="menu-col" id="menu-col">
+        <div id="tab-content" style="display:flex;flex-direction:column;flex:1;overflow:hidden;"></div>
+      </div>
+      <div class="order-col" id="order-col">
+        <div class="order-header">
+          <span id="order-mesa-label">Mesa 1</span>
+          <span id="order-count" style="font-size:11px;color:var(--text3);font-weight:400;"></span>
+        </div>
+        <div class="order-list" id="order-list"></div>
+        <div class="order-footer">
+          <input class="nota-in" id="nota-in" placeholder="Nota para cocina..." />
+          <div class="total-row"><span>Total</span><span id="order-total">S/ 0.00</span></div>
+          <div class="print-btns">
+            <button class="btn-print-salon" onclick="printTicket('salon')">🖨 Salón</button>
+            <button class="btn-print-cocina" onclick="printTicket('cocina')">👨‍🍳 Cocina</button>
+          </div>
+          <div class="footer-btns">
+            <button class="btn-limpiar" onclick="anularOrder()">Anular</button>
+            <button class="btn-share" onclick="compartirTicket()">📤</button>
+            <button class="btn-cobrar" onclick="cobrarMesa()">Cobrar S/ <span id="order-total-btn">0.00</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARA LLEVAR -->
+  <div class="screen pedido-screen" id="scr-llevar">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-bottom:0.5px solid var(--border);flex-shrink:0;">
+      <button onclick="showScreen('mesas')" style="font-size:20px;color:#1565c0;background:none;border:none;cursor:pointer;line-height:1;">←</button>
+      <div style="font-size:15px;font-weight:700;color:#1565c0;flex:1;">Para llevar</div>
+    </div>
+    <!-- Orden strip -->
+    <div class="mesa-strip" id="orden-strip"></div>
+    <!-- Main tabs -->
+    <div class="main-tabs">
+      <button class="mtab active" onclick="switchTabLlevar(0,this)">Menú+entrada</button>
+      <button class="mtab" onclick="switchTabLlevar(1,this)">A la carta</button>
+      <button class="mtab" onclick="switchTabLlevar(2,this)">Bebidas</button>
+      <button class="mtab" onclick="switchTabLlevar(3,this)">Extras</button>
+    </div>
+    <!-- Mobile toggle -->
+    <div class="mob-toggle-bar" id="mob-toggle-bar-llevar">
+      <button class="mob-toggle-btn" onclick="showScreen('mesas')" style="flex:none;padding:8px 12px;font-size:18px;">←</button>
+      <button class="mob-toggle-btn active" id="mob-btn-menu-llevar" onclick="mobToggleLlevar('menu')">Agregar platos</button>
+      <button class="mob-toggle-btn" id="mob-btn-pedido-llevar" onclick="mobToggleLlevar('pedido')">Pedido (<span id="mob-llevar-count">0</span>)</button>
+    </div>
+    <!-- Split -->
+    <div class="split">
+      <div class="menu-col" id="menu-col-llevar">
+        <div id="tab-content-llevar" style="display:flex;flex-direction:column;flex:1;overflow:hidden;"></div>
+      </div>
+      <div class="order-col" id="order-col-llevar">
+        <div class="order-header">
+          <span id="llevar-orden-label">Orden 1</span>
+          <span id="llevar-count-header" style="font-size:11px;color:var(--text3);font-weight:400;"></span>
+        </div>
+        <div class="order-list" id="llevar-list"></div>
+        <div class="order-footer">
+          <input class="nota-in" id="nota-llevar" placeholder="Nombre del cliente..." />
+          <div class="total-row"><span>Total</span><span id="llevar-total">S/ 0.00</span></div>
+          <div class="print-btns">
+            <button class="btn-print-salon" onclick="printTicketLlevar('salon')">🖨 Ticket</button>
+            <button class="btn-print-cocina" onclick="printTicketLlevar('cocina')">👨‍🍳 Cocina</button>
+          </div>
+          <div class="footer-btns">
+            <button class="btn-limpiar" onclick="anularLlevar()">Anular</button>
+            <button class="btn-share" onclick="compartirTicketLlevar()">📤</button>
+            <button class="btn-cobrar" onclick="cobrarLlevar()">Cobrar S/ <span id="llevar-total-btn">0.00</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESUMEN -->
+  <div class="screen" id="scr-resumen">
+    <div class="screen-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <button onclick="showScreen('mesas')" style="font-size:20px;color:var(--brand);background:none;border:none;cursor:pointer;padding:0 8px 0 0;line-height:1;">←</button>
+      <span style="flex:1;">Resumen del día</span>
+      <button onclick="if(confirm('¿Cerrar el día y reiniciar todas las mesas?')){resetDia();}" style="font-size:11px;color:var(--brand);background:none;border:none;cursor:pointer;">Cerrar día</button>
+    </div>
+    <div id="resumen-content"></div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="screen" id="scr-historial">
+    <div class="screen-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="flex:1;">Historial de ventas</span>
+    </div>
+    <div style="padding:0 12px 8px;display:flex;gap:8px;align-items:center;">
+      <input type="date" id="hist-fecha" style="flex:1;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;background:none;color:var(--text);" />
+      <button onclick="cargarHistorial()" style="padding:8px 14px;background:var(--brand);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;">Ver</button>
+    </div>
+    <div id="historial-content" style="padding:0 12px 20px;"></div>
+  </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+const MENU_PLATOS = [
+  { name:"Chaufa de Pollo", price:12 },
+  { name:"Aeropuerto de Pollo", price:13 },
+  { name:"Dragon Mixto", price:16 },
+  { name:"Tallarín Saltado", price:15 },
+  { name:"Kanlu Wantan", price:16 },
+  { name:"Pollo con Piña", price:16 },
+  { name:"Pollo con Verduras", price:15 },
+  { name:"Chicharrón de Pollo con Limón", price:16 },
+  { name:"Suki Mixto (Chaufa+Tallarín+Tipakay)", price:25 },
+];
+const ENTRADAS_MENU = ["Sopa Wantan","Wantanes Fritos"];
+
+const CARTA = [
+  { cat:"Entradas", items:[
+    {name:"Sopa Wantan Especial",sizes:[{l:"Porción",p:15}]},
+    {name:"Sopa Cantonesa",sizes:[{l:"Porción",p:15}]},
+    {name:"Sopa de Pato Asado",sizes:[{l:"Porción",p:18}]},
+    {name:"Sopa de Fuchifu",sizes:[{l:"Porción",p:15}]},
+    {name:"Sopa de Pollo con Kion",sizes:[{l:"Porción",p:15}]},
+    {name:"Tortillas de Verduras",sizes:[{l:"Porción",p:10}]},
+    {name:"Tortilla Simple",sizes:[{l:"Porción",p:6}]},
+    {name:"Wantan Frito",sizes:[{l:"Docena",p:12}], tipo:"wantan_frito", precioUnidad:1},
+    {name:"Wantan Frutado",sizes:[{l:"Media docena",p:9},{l:"Docena",p:18}]},
+    {name:"Nabo Encurtido",sizes:[{l:"Porción",p:8}]},
+    {name:"Arroz Blanco",sizes:[{l:"Porción",p:5}]},
+  ]},
+  { cat:"Chaufa", items:[
+    {name:"Chaufa de Pollo",sizes:[{l:"Personal",p:10},{l:"Familiar",p:35}]},
+    {name:"Chaufa de Chancho",sizes:[{l:"Personal",p:15},{l:"Familiar",p:43}]},
+    {name:"Chaufa Mixto",sizes:[{l:"Personal",p:16},{l:"Familiar",p:45}]},
+    {name:"Chaufa Especial",sizes:[{l:"Personal",p:18},{l:"Familiar",p:48}]},
+    {name:"Chaufa con Verduras",sizes:[{l:"Personal",p:15},{l:"Familiar",p:43}]},
+    {name:"Chaufa con Tortilla",sizes:[{l:"Personal",p:14}]},
+    {name:"Aeropuerto Chancho/MX",sizes:[{l:"Personal",p:17},{l:"Familiar",p:48}]},
+    {name:"Aeropuerto Especial",sizes:[{l:"Personal",p:20},{l:"Familiar",p:50}]},
+  ]},
+  { cat:"Tallarín", items:[
+    {name:"Dragon Mixto",sizes:[{l:"Personal",p:22},{l:"Normal",p:35},{l:"Familiar",p:55}]},
+    {name:"Tallarín Saltado",sizes:[{l:"Personal",p:20},{l:"Normal",p:32},{l:"Familiar",p:45}]},
+    {name:"Tallarín Frito",sizes:[{l:"Personal",p:25},{l:"Normal",p:35},{l:"Familiar",p:55}]},
+    {name:"Tallarín Samsi",sizes:[{l:"Personal",p:23},{l:"Normal",p:35},{l:"Familiar",p:55}]},
+    {name:"Tallarín Taypa",sizes:[{l:"Personal",p:25},{l:"Normal",p:38},{l:"Familiar",p:55}]},
+    {name:"Tallarín 40x40",sizes:[{l:"Personal",p:20},{l:"Normal",p:35},{l:"Familiar",p:45}]},
+    {name:"Tallarín de Pato Asado",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Tallarín de Chancho Asado",sizes:[{l:"Normal",p:30},{l:"Familiar",p:60}]},
+  ]},
+  { cat:"Platos fuertes", items:[
+    {name:"Kanlu Wantan",sizes:[{l:"Personal",p:22},{l:"Normal",p:32},{l:"Familiar",p:47}]},
+    {name:"Limonkay",sizes:[{l:"Personal",p:20},{l:"Normal",p:30},{l:"Familiar",p:45}]},
+    {name:"Chijaukay",sizes:[{l:"Personal",p:20},{l:"Normal",p:30},{l:"Familiar",p:45}]},
+    {name:"Tipakay",sizes:[{l:"Personal",p:20},{l:"Normal",p:30},{l:"Familiar",p:45}]},
+    {name:"Taypa a la Plancha",sizes:[{l:"Normal",p:40}]},
+    {name:"Enrollado de Chancho c/Ostión",sizes:[{l:"Personal",p:25},{l:"Normal",p:38}]},
+    {name:"Enrollado de Espárragos c/Ostión",sizes:[{l:"Personal",p:25},{l:"Normal",p:38}]},
+  ]},
+  { cat:"Pato Asado", items:[
+    {name:"Pato con Verduras",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Pato al Ostión",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Pato con Tausi",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Pato al Ajo",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Pato con Durazno",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Pato con Piña",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Pato con Tamarindo",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+    {name:"Pato con Nabo",sizes:[{l:"Normal",p:35},{l:"Familiar",p:60}]},
+  ]},
+  { cat:"Chancho Asado", items:[
+    {name:"Chancho con Verduras",sizes:[{l:"Normal",p:25},{l:"Familiar",p:50}]},
+    {name:"Chancho al Ostión",sizes:[{l:"Normal",p:25},{l:"Familiar",p:50}]},
+    {name:"Chancho con Tausi",sizes:[{l:"Normal",p:25},{l:"Familiar",p:50}]},
+    {name:"Chancho al Ajo",sizes:[{l:"Normal",p:25},{l:"Familiar",p:50}]},
+    {name:"Chancho con Durazno",sizes:[{l:"Normal",p:27},{l:"Familiar",p:50}]},
+    {name:"Chancho con Piña",sizes:[{l:"Normal",p:27},{l:"Familiar",p:50}]},
+    {name:"Chancho con Tamarindo",sizes:[{l:"Normal",p:27},{l:"Familiar",p:50}]},
+    {name:"Chancho con Nabo",sizes:[{l:"Normal",p:25},{l:"Familiar",p:50}]},
+  ]},
+  { cat:"Pollo", items:[
+    {name:"Pollo con Verduras",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Pollo en Salsa de Ostión",sizes:[{l:"Personal",p:20},{l:"Familiar",p:45}]},
+    {name:"Pollo al Curri",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Pollo con Champiñones",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Pollo con Tausi",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Pollo con Piña",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Pollo con Tamarindo",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Pollo con Durazno",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Pollo Afrutado",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+  ]},
+  { cat:"Chicharrón", items:[
+    {name:"Chicharrón con Limón",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Chicharrón con Verduras",sizes:[{l:"Personal",p:20},{l:"Familiar",p:45}]},
+    {name:"Chicharrón con Tausi",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Chicharrón al Curri",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Chicharrón con Tamarindo",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Chicharrón con Durazno",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Chicharrón con Piña",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Chicharrón con Nabo",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Chicharrón Afrutado",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+  ]},
+  { cat:"Alitas", items:[
+    {name:"Alitas con Limón",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas con Ostión",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas con Verduras",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas con Tausi",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas al Curri",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas con Tamarindo",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas con Durazno",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas con Piña",sizes:[{l:"Personal",p:22},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas con Nabo",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas Afrutadas",sizes:[{l:"Personal",p:22},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+    {name:"Alitas a la BBQ",sizes:[{l:"Personal",p:20},{l:"Normal",p:28},{l:"Familiar",p:45}]},
+  ]},
+  { cat:"Combos", items:[
+    {name:"Combo 1 (Chicharrón+Chaufa+4Wan+Chicha500ml)",sizes:[{l:"Combo",p:40}]},
+    {name:"Combo 2 (Kanlu+Tallarín+6Wan+Chicha1lt)",sizes:[{l:"Combo",p:48}]},
+    {name:"Combo 3 (Chijaukay+Tipakay+6Wan+Chicha500ml)",sizes:[{l:"Combo",p:45}]},
+    {name:"Combo Familiar (Taypa+Kanlu+Chijaukay+Chaufa+Chicha1lt)",sizes:[{l:"Combo",p:100}]},
+    {name:"Suki (Chaufa+4Wan+Chicha500ml)",sizes:[{l:"Combo",p:20}]},
+    {name:"Suki Duo (Chaufa+4Wan+Chijaukay/Tipakay+Chicha500ml)",sizes:[{l:"Combo",p:35}]},
+    {name:"Triple Suki (Kanlu/Dragon+Chaufa Mixto+6Wan+40x40+Chicha1lt)",sizes:[{l:"Combo",p:75}]},
+    {name:"Suki Intenso (Chijaukay+Tallarín fam+Chaufa fam+8Wan+Chicha1lt)",sizes:[{l:"Combo",p:110}]},
+    {name:"Combo Ying Yang",sizes:[{l:"Combo",p:32}]},
+  ]},
+];
+
+const BEBIDAS = [
+  { cat:"Gaseosas", items:[
+    {name:"Taypa Inka Cola 450ml",sizes:[{l:"450ml",p:3}]},
+    {name:"Inka Cola pequeña",sizes:[{l:"296ml",p:2}]},
+    {name:"Coca Cola pequeña",sizes:[{l:"296ml",p:2}]},
+    {name:"7Up pequeña",sizes:[{l:"296ml",p:2}]},
+    {name:"Taypa Coca Cola 450ml",sizes:[{l:"450ml",p:3}]},
+    {name:"Gordita 650ml",sizes:[{l:"650ml",p:5}]},
+    {name:"Inka Cola 1 litro",sizes:[{l:"1 litro",p:7}]},
+    {name:"Coca Cola 1 litro",sizes:[{l:"1 litro",p:7}]},
+    {name:"Yumbo Inka Cola 500ml",sizes:[{l:"500ml",p:4}]},
+    {name:"Yumbo Coca Cola 500ml",sizes:[{l:"500ml",p:4}]},
+    {name:"Pepsi 350ml",sizes:[{l:"350ml",p:2}]},
+  ]},
+  { cat:"Jugos y chicha", items:[
+    {name:"Maracuyá",sizes:[{l:"500ml",p:5},{l:"1 litro",p:10}]},
+    {name:"Chicha Morada",sizes:[{l:"500ml",p:6},{l:"1 litro",p:12}]},
+  ]},
+  { cat:"Agua", items:[
+    {name:"Agua 400ml",sizes:[{l:"400ml",p:2}]},
+  ]},
+  { cat:"Calientes", items:[
+    {name:"Café",sizes:[{l:"Taza",p:3}]},
+    {name:"Té Jazmín",sizes:[{l:"Taza",p:3}]},
+    {name:"Té",sizes:[{l:"Taza",p:2}]},
+  ]},
+];
+
+const EXTRAS = [
+  {name:"Taper (para llevar comida)",price:1.00},
+  {name:"Taper de sopa (para llevar)",price:0.50},
+  {name:"Delivery — Chepén / Chequen",price:2.00},
+  {name:"Delivery — Villa Los Mártires",price:3.00},
+  {name:"Delivery — Parque de Talambo",price:4.00},
+  {name:"Delivery — Talambo (interior)",price:6.00},
+  {name:"Delivery — Guadalupe",price:7.00},
+];
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let mesas = Array.from({length:9},(_,i)=>({id:i+1,pedido:[],nota:''}));
+let ordenes = Array.from({length:6},(_,i)=>({id:i+1,pedido:[],nota:''}));
+let ventas = []; // historial de ventas del día
+let curMesa = 1;
+let curOrden = 1;
+let curTab = 0;
+let curTabLlevar = 0;
+let curCat = 0;
+let pendingItem = null;
+let menuEntSel = {};
+let isLlevarMode = false; // saber si el add-item va a mesa o a llevar
+
+// ═══════════════════════════════════════
+// DRAWER NAVIGATION
+// ═══════════════════════════════════════
+const SCREEN_TITLES = { mesas:'Mesas', pedido:'Tomar pedido', llevar:'Para llevar', resumen:'Ventas del día', historial:'Historial de ventas' };
+
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+function showScreen(s) {
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.dnav-btn').forEach(x=>x.classList.remove('active'));
+  document.getElementById('scr-'+s).classList.add('active');
+  const nb = document.getElementById('dnav-'+s);
+  if(nb) nb.classList.add('active');
+  const tt = document.getElementById('topbar-title');
+  if(tt) tt.textContent = SCREEN_TITLES[s] || 'Chifa Suki';
+  if(s==='mesas') { renderMesas(); renderOrdenesGrid(); }
+  if(s==='pedido') { isLlevarMode=false; renderPedidoPage(); }
+  if(s==='llevar') { isLlevarMode=true; renderLlevarPage(); }
+  if(s==='resumen') renderResumen();
+  if(s==='historial') initHistorial();
+}
+
+function showResumen() { showScreen('resumen'); }
+
+// ═══════════════════════════════════════
+// MESAS
+// ═══════════════════════════════════════
+function renderMesas() {
+  document.getElementById('mesas-grid').innerHTML = mesas.map(m=>{
+    const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+    const qty = m.pedido.reduce((a,x)=>a+x.qty,0);
+    const ocup = m.pedido.length>0;
+    return `<div class="mesa-card ${ocup?'ocupada':''}" onclick="irMesa(${m.id})">
+      <div class="mesa-num">${m.id}</div>
+      <div class="mesa-badge ${ocup?'ocup':'libre'}">${ocup?'Ocupada':'Libre'}</div>
+      ${ocup?`<div class="mesa-info">S/ ${total.toFixed(2)}<br><span style="font-weight:400;color:var(--text3)">${qty} item(s)</span></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function irMesa(n) {
+  curMesa = n;
+  showScreen('pedido');
+}
+
+// ═══════════════════════════════════════
+// PARA LLEVAR (múltiples órdenes)
+// ═══════════════════════════════════════
+function renderOrdenesGrid() {
+  document.getElementById('ordenes-grid').innerHTML = ordenes.map(o=>{
+    const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+    const qty = o.pedido.reduce((a,x)=>a+x.qty,0);
+    const ocup = o.pedido.length>0;
+    return `<div class="mesa-card ${ocup?'ocupada':''}" style="border-color:${ocup?'#1565c0':''}; background:${ocup?'#e3f2fd':''}" onclick="irOrden(${o.id})">
+      <div class="mesa-num" style="color:${ocup?'#1565c0':''}">${o.id}</div>
+      <div class="mesa-badge ${ocup?'ocup':'libre'}" style="${ocup?'background:#dbeafe;color:#1565c0':''}">${ocup?'Activa':'Libre'}</div>
+      ${ocup?`<div class="mesa-info" style="color:#1565c0;">S/ ${total.toFixed(2)}<br><span style="font-weight:400;color:var(--text3)">${qty} item(s)</span></div>`:''}
+      ${o.nota&&ocup?`<div style="font-size:10px;color:#1565c0;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${o.nota}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function irOrden(n) {
+  curOrden = n;
+  showScreen('llevar');
+}
+
+function renderLlevarPage() {
+  renderOrdenStrip();
+  renderLlevarList();
+  renderTabContentLlevar();
+  const mc = document.getElementById('menu-col-llevar');
+  const oc = document.getElementById('order-col-llevar');
+  const bm = document.getElementById('mob-btn-menu-llevar');
+  const bp = document.getElementById('mob-btn-pedido-llevar');
+  if(mc) mc.classList.remove('mob-hidden');
+  if(oc) oc.classList.remove('mob-active');
+  if(bm) bm.classList.add('active');
+  if(bp) bp.classList.remove('active');
+}
+
+function renderOrdenStrip() {
+  document.getElementById('orden-strip').innerHTML = ordenes.map(o=>
+    `<button class="mpill ${o.id===curOrden?'active':''} ${o.pedido.length>0&&o.id!==curOrden?'ocup':''}"
+      style="${o.id===curOrden?'background:#1565c0;border-color:#1565c0;':o.pedido.length>0?'border-color:#1565c0;color:#1565c0;':''}"
+      onclick="switchOrden(${o.id})">O${o.id}${o.nota?' · '+o.nota.substring(0,6):''}</button>`
+  ).join('');
+}
+
+function switchOrden(n) {
+  curOrden = n;
+  renderOrdenStrip();
+  renderLlevarList();
+}
+
+function switchTabLlevar(i, btn) {
+  curTabLlevar = i; curCat = 0;
+  document.querySelectorAll('#scr-llevar .mtab').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  renderTabContentLlevar();
+}
+
+function renderTabContentLlevar() {
+  const el = document.getElementById('tab-content-llevar');
+  if(!el) return;
+  if(curTabLlevar===0) renderMenuTab(el);
+  else if(curTabLlevar===1) renderCartaTab(el);
+  else if(curTabLlevar===2) renderBebidasTab(el);
+  else renderExtrasTab(el);
+}
+
+function mobToggleLlevar(view) {
+  const mc = document.getElementById('menu-col-llevar');
+  const oc = document.getElementById('order-col-llevar');
+  const bm = document.getElementById('mob-btn-menu-llevar');
+  const bp = document.getElementById('mob-btn-pedido-llevar');
+  if(view==='menu') {
+    mc.classList.remove('mob-hidden'); oc.classList.remove('mob-active');
+    bm.classList.add('active'); bp.classList.remove('active');
+  } else {
+    mc.classList.add('mob-hidden'); oc.classList.add('mob-active');
+    bm.classList.remove('active'); bp.classList.add('active');
+  }
+}
+
+function renderLlevarList() {
+  const o = ordenes[curOrden-1];
+  const ni = document.getElementById('nota-llevar');
+  if(ni) { ni.value=o.nota||''; ni.onchange=()=>{o.nota=ni.value; renderOrdenStrip(); saveToCloud();}; }
+  const label = document.getElementById('llevar-orden-label');
+  if(label) label.textContent = 'Orden '+curOrden+(o.nota?' — '+o.nota:'');
+  const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const qty = o.pedido.reduce((a,x)=>a+x.qty,0);
+  const ch = document.getElementById('llevar-count-header');
+  const mc = document.getElementById('mob-llevar-count');
+  if(ch) ch.textContent = qty ? qty+' item(s)' : '';
+  if(mc) mc.textContent = qty;
+  document.getElementById('llevar-total').textContent = 'S/ '+total.toFixed(2);
+  const tb = document.getElementById('llevar-total-btn');
+  if(tb) tb.textContent = total.toFixed(2);
+  const el = document.getElementById('llevar-list');
+  if(!o.pedido.length) {
+    el.innerHTML = `<div class="empty-order">Orden ${curOrden} vacía<br><span style="font-size:11px;">Agrega platos desde el menú</span></div>`;
+    return;
+  }
+  el.innerHTML = o.pedido.map((x,i)=>`
+    <div class="orow" style="padding:10px 4px;">
+      <div style="flex:1;min-width:0;">
+        <div class="orow-name" style="font-size:13px;">${x.name}</div>
+        <div class="orow-tag">${x.tipo||''}</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qbtn" style="width:32px;height:32px;font-size:18px;" onclick="chgQtyLlevar(${i},-1)">−</button>
+        <span class="qnum" style="font-size:15px;min-width:22px;">${x.qty}</span>
+        <button class="qbtn" style="width:32px;height:32px;font-size:18px;" onclick="chgQtyLlevar(${i},1)">+</button>
+      </div>
+      <span class="orow-total" style="font-size:13px;min-width:48px;">S/${(x.precio*x.qty).toFixed(2)}</span>
+      <button class="del-btn" style="font-size:22px;padding:0 4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;" onclick="delItemLlevar(${i})">×</button>
+    </div>`).join('');
+}
+
+function doAddLlevar(name, precio, tipo) {
+  const o = ordenes[curOrden-1];
+  const ex = o.pedido.find(x=>x.name===name);
+  if(ex) { ex.qty++; } else { o.pedido.push({name,precio,qty:1,tipo}); }
+  renderLlevarList();
+  renderOrdenesGrid();
+  renderOrdenStrip();
+  localLastSave = Date.now();
+  saveToCloud();
+}
+
+function chgQtyLlevar(i,d) {
+  const o = ordenes[curOrden-1];
+  o.pedido[i].qty += d;
+  if(o.pedido[i].qty<=0) o.pedido.splice(i,1);
+  renderLlevarList(); renderOrdenesGrid(); renderOrdenStrip();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+function delItemLlevar(i) {
+  ordenes[curOrden-1].pedido.splice(i,1);
+  renderLlevarList(); renderOrdenesGrid(); renderOrdenStrip();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+function anularLlevar() {
+  const o = ordenes[curOrden-1];
+  if(!o.pedido.length) return;
+  if(!confirm('¿Anular Orden '+curOrden+'?\nEsto NO registra venta.')) return;
+  ordenes[curOrden-1].pedido=[]; ordenes[curOrden-1].nota='';
+  renderLlevarList(); renderOrdenesGrid(); renderOrdenStrip();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+function cobrarLlevar() {
+  const o = ordenes[curOrden-1];
+  if(!o.pedido.length){alert('No hay items en la orden.');return;}
+  const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const label = o.nota ? 'Orden '+curOrden+' ('+o.nota+')' : 'Orden '+curOrden;
+  if(!confirm('¿Cobrar '+label+'?\nTotal: S/ '+total.toFixed(2))) return;
+  // Registrar venta
+  const venta = {
+    id: Date.now(),
+    hora: now(),
+    origen: 'Llevar — '+label,
+    nota: o.nota||'',
+    items: o.pedido.map(x=>({...x})),
+    total
+  };
+  ventas.push(venta);
+  saveVentaHistorial(venta); // guardar permanentemente
+  // Imprimir ticket automáticamente antes de limpiar
+  printTicketLlevar('salon');
+  // Limpiar orden
+  ordenes[curOrden-1].pedido=[]; ordenes[curOrden-1].nota='';
+  renderLlevarList(); renderOrdenesGrid(); renderOrdenStrip();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+function printTicketLlevar(tipo) {
+  const o = ordenes[curOrden-1];
+  if(!o.pedido.length){alert('No hay items para imprimir.');return;}
+  const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const cocina = o.pedido.filter(x=>x.tipo!=='Bebida'&&x.tipo!=='Extra');
+  const resto = o.pedido.filter(x=>x.tipo==='Bebida'||x.tipo==='Extra');
+  let html = '';
+  if(tipo==='salon') {
+    html = `<style>
+      @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
+      .c{text-align:center}.sep{border-top:1px dashed #000;margin:3px 0}.sep2{border-top:1.5px solid #000;margin:3px 0}
+      .hd{font-size:10px;color:#888}.mesa{font-size:13px;font-weight:700;color:#333}
+      .row{display:flex;justify-content:space-between;gap:4px;margin:4px 0;align-items:baseline}
+      .rn{flex:1;font-size:16px;font-weight:700}.rp{white-space:nowrap;font-size:16px;font-weight:700}
+      .sub{font-size:10px;color:#999;padding-left:6px;margin-bottom:2px}
+      .tot{display:flex;justify-content:space-between;font-size:20px;font-weight:900;margin-top:3px}
+      .nota{font-size:12px;font-weight:600}
+    </style>
+    <div class="c hd">CHIFA SUKI · 912 366 079</div>
+    <div class="sep2"></div>
+    <div class="mesa">Llevar — Ord ${curOrden} &nbsp;<span style="font-weight:400;font-size:11px;color:#888">${now()}</span></div>
+    ${o.nota?`<div class="nota">Cliente: ${o.nota}</div>`:''}
+    <div class="sep"></div>
+    ${o.pedido.map(x=>`<div class="row"><span class="rn">${x.qty}x ${x.name}</span><span class="rp">S/${(x.precio*x.qty).toFixed(2)}</span></div><div class="sub">@ S/${x.precio.toFixed(2)} c/u</div>`).join('')}
+    <div class="sep2"></div>
+    <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
+    <div class="sep"></div>
+    <div class="c hd">Gracias · chifa.suki</div><br>`;
+  } else {
+    html = `<style>
+      @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
+      .c{text-align:center}.sep{border-top:1.5px solid #000;margin:4px 0}.sep2{border-top:1px dashed #000;margin:3px 0}
+      .hd{font-size:10px;color:#888}.mesa{font-size:18px;font-weight:900}
+      .irow{display:flex;align-items:baseline;gap:6px;padding:5px 0;border-bottom:1px dotted #bbb}
+      .iq{font-size:16px;font-weight:700;min-width:22px}
+      .in{font-size:16px;font-weight:700;flex:1;line-height:1.3}
+      .ip{font-size:14px;font-weight:600;color:#444;white-space:nowrap}
+      .nota{font-size:13px;font-weight:700}.bev{font-size:11px;color:#555}
+    </style>
+    <div class="c hd">--- COCINA ---</div>
+    <div class="c mesa">LLEVAR — Ord ${curOrden}</div>
+    <div class="c hd">${now()}</div>
+    ${o.nota?`<div class="nota">Cliente: ${o.nota}</div>`:''}
+    <div class="sep"></div>
+    ${cocina.map(x=>`<div class="irow"><span class="iq">${x.qty}</span><span class="in">${x.name}</span><span class="ip">S/${x.precio.toFixed(2)}</span></div>`).join('')}
+    ${resto.length?`<div class="sep2"></div><div class="hd">BEBIDAS/EXTRAS:</div>${resto.map(x=>`<div class="bev">${x.qty}x ${x.name}</div>`).join('')}`:''}
+    <br>`;
+  }
+  const win = window.open('','_blank','width=400,height=600');
+  if(win) { win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket Llevar</title></head><body>'+html+'</body></html>'); win.document.close(); win.onload=()=>{win.focus();win.print();}; }
+  else {
+    const pf = document.getElementById('print-frame');
+    pf.innerHTML=html; pf.style.display='block';
+    document.querySelector('.app').style.display='none';
+    window.print();
+    setTimeout(()=>{ pf.innerHTML=''; pf.style.display='none'; document.querySelector('.app').style.display='flex'; },1000);
+  }
+}
+
+// ═══════════════════════════════════════
+// PEDIDO PAGE
+// ═══════════════════════════════════════
+function renderPedidoPage() {
+  renderMesaStrip();
+  renderOrderList();
+  renderTabContent();
+}
+
+function renderMesaStrip() {
+  document.getElementById('mesa-strip').innerHTML = mesas.map(m=>
+    `<button class="mpill ${m.id===curMesa?'active':''} ${m.pedido.length>0&&m.id!==curMesa?'ocup':''}" onclick="switchMesa(${m.id})">M${m.id}</button>`
+  ).join('');
+}
+
+function mobToggle(view) {
+  const menuCol = document.getElementById('menu-col');
+  const orderCol = document.getElementById('order-col');
+  const btnMenu = document.getElementById('mob-btn-menu');
+  const btnPedido = document.getElementById('mob-btn-pedido');
+  if(view==='menu') {
+    menuCol.classList.remove('mob-hidden');
+    orderCol.classList.remove('mob-active');
+    btnMenu.classList.add('active');
+    btnPedido.classList.remove('active');
+  } else {
+    menuCol.classList.add('mob-hidden');
+    orderCol.classList.add('mob-active');
+    btnMenu.classList.remove('active');
+    btnPedido.classList.add('active');
+  }
+}
+
+function updateMobCounter() {
+  const m = mesas[curMesa-1];
+  const qty = m.pedido.reduce((a,x)=>a+x.qty,0);
+  const el = document.getElementById('mob-order-count');
+  if(el) el.textContent = qty;
+}
+
+function switchMesa(n) {
+  curMesa = n;
+  renderMesaStrip();
+  renderOrderList();
+  updateMobCounter();
+}
+
+function switchTab(i, btn) {
+  curTab = i; curCat = 0;
+  document.querySelectorAll('.mtab').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  renderTabContent();
+}
+
+function renderTabContent() {
+  const el = document.getElementById('tab-content');
+  if(curTab===0) renderMenuTab(el);
+  else if(curTab===1) renderCartaTab(el);
+  else if(curTab===2) renderBebidasTab(el);
+  else renderExtrasTab(el);
+}
+
+// ── TAB 0: MENÚ CON ENTRADA ──
+function renderMenuTab(el) {
+  const prefix = isLlevarMode ? 'lmpc' : 'mpc';
+  let html = `<div style="padding:8px 10px 2px;font-size:11px;color:var(--text2);">Cada plato incluye entrada a elegir.</div><div style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;">`;
+  MENU_PLATOS.forEach((p,i)=>{
+    const sel = (i in menuEntSel) ? menuEntSel[i] : -1;
+    const ready = sel >= 0;
+    const mode = isLlevarMode ? 1 : 0;
+    html += `<div class="plate-card" id="${prefix}-${i}">
+      <div class="plate-top">
+        <div class="plate-name">${p.name}</div>
+        <div class="plate-price">S/ ${p.price}</div>
+      </div>
+      <span class="incl-badge">+ Entrada incluida</span>
+      <div class="ent-label">Elige la entrada:</div>
+      <div class="ent-btns">
+        <button class="ent-btn${sel===0?' sel':''}" onclick="selEntrada(${i},0,${mode})">${ENTRADAS_MENU[0]}</button>
+        <button class="ent-btn${sel===1?' sel':''}" onclick="selEntrada(${i},1,${mode})">${ENTRADAS_MENU[1]}</button>
+      </div>
+      <div class="plate-footer">
+        <span class="plate-hint${ready?' ready':''}">${ready?'✓ '+ENTRADAS_MENU[sel]:'Selecciona entrada'}</span>
+        <button class="add-btn" ${ready?'':'disabled'} onclick="${ready?'addMenuPlato('+i+','+mode+')':'void(0)'}">+</button>
+      </div>
+    </div>`;
+  });
+  // Sopa adicional
+  html += `<div class="plate-card" style="border-color:#e67e22;">
+    <div class="plate-top">
+      <div class="plate-name">Sopa adicional</div>
+      <div class="plate-price" style="color:#e67e22;">S/ 4.00</div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-top:4px;">Porción extra de sopa</div>
+    <div class="plate-footer" style="border-top:0.5px solid var(--border);margin-top:8px;padding-top:8px;">
+      <span style="font-size:11px;color:var(--text2);">Agregar al pedido</span>
+      <button class="add-btn" style="background:#e67e22;" onclick="doAdd('Sopa adicional',4,'Menú')">+</button>
+    </div>
+  </div>`;
+  html += '</div>';
+  el.innerHTML = html;
+  el.style.cssText = 'display:flex;flex-direction:column;flex:1;overflow:hidden;';
+}
+
+function selEntrada(pi, ei, mode) {
+  menuEntSel[pi] = ei;
+  const prefix = mode ? 'lmpc' : 'mpc';
+  const card = document.getElementById(prefix+'-'+pi);
+  if(!card) return;
+  card.querySelectorAll('.ent-btn').forEach((btn, idx) => {
+    btn.classList.toggle('sel', idx === ei);
+  });
+  const hint = card.querySelector('.plate-hint');
+  const addBtn = card.querySelector('.add-btn');
+  if(hint) {
+    hint.textContent = '✓ ' + ENTRADAS_MENU[ei];
+    hint.classList.add('ready');
+  }
+  if(addBtn) {
+    addBtn.disabled = false;
+    addBtn.onclick = () => addMenuPlato(pi, mode);
+  }
+}
+
+function addMenuPlato(pi, mode) {
+  const sel = menuEntSel[pi];
+  if(sel===undefined||sel<0) return;
+  // Temporalmente forzar el modo correcto
+  const prevMode = isLlevarMode;
+  isLlevarMode = !!mode;
+  doAdd(MENU_PLATOS[pi].name+' + '+ENTRADAS_MENU[sel], MENU_PLATOS[pi].price, 'Menú');
+  isLlevarMode = prevMode;
+}
+
+// ── TAB 1: CARTA ──
+function renderCartaTab(el) {
+  const catBar = `<div class="cat-bar">${CARTA.map((c,i)=>`<button class="ctab ${i===curCat?'active':''}" onclick="selectCat(${i})">${c.cat}</button>`).join('')}</div>`;
+  const cat = CARTA[curCat];
+  const items = `<div class="menu-scroll"><div class="menu-items"><div class="sec-title">${cat.cat}</div>`+
+    cat.items.map((item,i)=>{
+      const multi = item.sizes.length>1;
+      const isWantan = item.tipo==='wantan_frito';
+      const priceLabel = isWantan ? 'S/1 c/u' : multi ? 'S/'+item.sizes[0].p+'…' : 'S/'+item.sizes[0].p;
+      const subLabel = isWantan ? 'Docena S/12 · elige las unidades que quieras' : multi ? item.sizes.map(s=>s.l+' S/'+s.p).join(' · ') : '';
+      return `<div class="mrow">
+        <div class="mrow-info">
+          <div class="mrow-name">${item.name}</div>
+          ${subLabel?`<div class="mrow-sub">${subLabel}</div>`:''}
+        </div>
+        <span class="mrow-price">${priceLabel}</span>
+        <button class="add-btn" onclick="addCartaItem(${curCat},${i})">+</button>
+      </div>`;
+    }).join('')+'</div></div>';
+  el.innerHTML = catBar + items;
+  el.style.cssText = 'display:flex;flex-direction:column;flex:1;overflow:hidden;';
+}
+
+function selectCat(i) {
+  curCat = i;
+  if(isLlevarMode) renderTabContentLlevar();
+  else renderTabContent();
+}
+
+function addCartaItem(ci,ii) {
+  const item = CARTA[ci].items[ii];
+  // Wantan frito → modal de cantidad libre
+  if(item.tipo==='wantan_frito') {
+    wantanQty = 1;
+    updateWantanModal();
+    document.getElementById('modal-wantan').classList.add('open');
+    return;
+  }
+  if(item.sizes.length===1) { doAdd(item.name+' ('+item.sizes[0].l+')',item.sizes[0].p,'Carta'); return; }
+  pendingItem = {item,src:'Carta'};
+  openModal(item.name,'Elige el tamaño',item.sizes);
+}
+
+// ── TAB 2: BEBIDAS ──
+function renderBebidasTab(el) {
+  const catBar = `<div class="cat-bar">${BEBIDAS.map((c,i)=>`<button class="ctab ${i===curCat?'active':''}" onclick="selectCat(${i})">${c.cat}</button>`).join('')}</div>`;
+  const cat = BEBIDAS[curCat];
+  const items = `<div class="menu-scroll"><div class="menu-items"><div class="sec-title">${cat.cat}</div>`+
+    cat.items.map((item,i)=>{
+      const multi = item.sizes.length>1;
+      return `<div class="mrow">
+        <div class="mrow-info">
+          <div class="mrow-name">${item.name}</div>
+          ${multi?`<div class="mrow-sub">${item.sizes.map(s=>s.l+' S/'+s.p).join(' · ')}</div>`:''}
+        </div>
+        <span class="mrow-price">${multi?'S/'+item.sizes[0].p+'–S/'+item.sizes[item.sizes.length-1].p:'S/'+item.sizes[0].p}</span>
+        <button class="add-btn" onclick="addBebida(${curCat},${i})">+</button>
+      </div>`;
+    }).join('')+'</div></div>';
+  el.innerHTML = catBar + items;
+  el.style.cssText = 'display:flex;flex-direction:column;flex:1;overflow:hidden;';
+}
+
+function addBebida(ci,ii) {
+  const item = BEBIDAS[ci].items[ii];
+  if(item.sizes.length===1) { doAdd(item.name+' '+item.sizes[0].l,item.sizes[0].p,'Bebida'); return; }
+  pendingItem = {item,src:'Bebida'};
+  openModal(item.name,'Elige el tamaño',item.sizes);
+}
+
+// ── TAB 3: EXTRAS ──
+function renderExtrasTab(el) {
+  el.innerHTML = `<div style="overflow-y:auto;flex:1;padding:8px 0;">` +
+    EXTRAS.map((e,i)=>`<div class="extra-card">
+      <div class="extra-info"><div class="extra-name">${e.name}</div><div class="extra-price">S/ ${e.price.toFixed(2)} c/u</div></div>
+      <button class="add-btn" onclick="addExtra(${i})">+</button>
+    </div>`).join('') +
+    `<div style="margin:8px 8px 0;border-top:1px dashed var(--border);padding-top:10px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Agregar ítem personalizado</div>
+      <div class="extra-card" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <input id="custom-item-name" class="nota-in" style="margin:0;" placeholder="Descripción (ej: media porción, cortesía...)" />
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:13px;color:var(--text2);white-space:nowrap;">S/</span>
+          <input id="custom-item-price" type="number" min="0" step="0.5" class="nota-in" style="margin:0;width:80px;" placeholder="0.00" />
+          <button class="add-btn" style="width:auto;border-radius:var(--radius-sm);padding:0 14px;flex-shrink:0;" onclick="addCustomItem()">Agregar</button>
+        </div>
+      </div>
+    </div>
+    </div>`;
+  el.style.cssText = 'display:flex;flex-direction:column;flex:1;overflow:hidden;';
+}
+
+function addCustomItem() {
+  const nameEl = document.getElementById('custom-item-name');
+  const priceEl = document.getElementById('custom-item-price');
+  const name = (nameEl ? nameEl.value.trim() : '');
+  const price = parseFloat(priceEl ? priceEl.value : 0) || 0;
+  if(!name) { alert('Escribe una descripción para el ítem.'); return; }
+  doAdd(name, price, 'Extra');
+  // Limpiar campos
+  if(nameEl) nameEl.value = '';
+  if(priceEl) priceEl.value = '';
+}
+
+// ── MODAL ──
+function openModal(title,sub,sizes) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-sub').textContent = sub;
+  document.getElementById('modal-options').innerHTML = sizes.map(s=>
+    `<div class="size-opt" onclick="pickSize('${s.l}',${s.p})">
+      <span class="size-opt-label">${s.l}</span>
+      <span class="size-opt-price">S/ ${s.p}</span>
+    </div>`).join('');
+  document.getElementById('modal').classList.add('open');
+}
+
+function pickSize(label,price) {
+  doAdd(pendingItem.item.name+' ('+label+')',price,pendingItem.src);
+  closeModal();
+}
+
+// ── WANTAN FRITO MODAL ──
+let wantanQty = 1;
+
+function updateWantanModal() {
+  document.getElementById('wantan-qty').textContent = wantanQty;
+  document.getElementById('wantan-total').textContent = 'S/ '+wantanQty.toFixed(2);
+}
+
+function wantanChg(d) {
+  wantanQty = Math.max(1, wantanQty + d);
+  updateWantanModal();
+}
+
+function wantanSet(n) {
+  wantanQty = n;
+  updateWantanModal();
+}
+
+function confirmWantan() {
+  const label = wantanQty === 12 ? 'Docena' : wantanQty === 6 ? '6 unidades' : wantanQty+' unidad'+(wantanQty>1?'es':'');
+  doAdd('Wantan Frito ('+label+')', wantanQty * 1, 'Carta');
+  closeWantanModal();
+}
+
+function closeWantanModal() {
+  document.getElementById('modal-wantan').classList.remove('open');
+  wantanQty = 1;
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  pendingItem = null;
+}
+
+// ── ORDER LIST ──
+function renderOrderList() {
+  const m = mesas[curMesa-1];
+  const ni = document.getElementById('nota-in');
+  if(ni) { ni.value=m.nota||''; }
+  document.getElementById('order-mesa-label').textContent = 'Mesa '+curMesa;
+  const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const qty = m.pedido.reduce((a,x)=>a+x.qty,0);
+  document.getElementById('order-count').textContent = qty ? qty+' item(s)' : '';
+  document.getElementById('order-total').textContent = 'S/ '+total.toFixed(2);
+  const tb = document.getElementById('order-total-btn');
+  if(tb) tb.textContent = total.toFixed(2);
+  updateMobCounter();
+  const el = document.getElementById('order-list');
+  if(!m.pedido.length) {
+    el.innerHTML = `<div class="empty-order">Sin items en Mesa ${curMesa}<br><span style="font-size:11px;">Agrega platos desde el menú</span></div>`;
+    return;
+  }
+  el.innerHTML = m.pedido.map((x,i)=>`
+    <div class="orow" style="padding:10px 4px;">
+      <div style="flex:1;min-width:0;">
+        <div class="orow-name" style="font-size:13px;">${x.name}</div>
+        <div class="orow-tag">${x.tipo||''}</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qbtn" style="width:32px;height:32px;font-size:18px;" onclick="chgQty(${i},-1)">−</button>
+        <span class="qnum" style="font-size:15px;min-width:22px;">${x.qty}</span>
+        <button class="qbtn" style="width:32px;height:32px;font-size:18px;" onclick="chgQty(${i},1)">+</button>
+      </div>
+      <span class="orow-total" style="font-size:13px;min-width:48px;">S/${(x.precio*x.qty).toFixed(2)}</span>
+      <button class="del-btn" style="font-size:22px;padding:0 4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;" onclick="delItem(${i})">×</button>
+    </div>`).join('');
+}
+
+function cobrarMesa() {
+  const m = mesas[curMesa-1];
+  if(!m.pedido.length){alert('No hay items en el pedido.');return;}
+  const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  if(!confirm('¿Cobrar Mesa '+m.id+'?\nTotal: S/ '+total.toFixed(2))) return;
+  // Registrar venta
+  const venta = {
+    id: Date.now(),
+    hora: now(),
+    origen: 'Mesa '+m.id,
+    nota: m.nota||'',
+    items: m.pedido.map(x=>({...x})),
+    total
+  };
+  ventas.push(venta);
+  saveVentaHistorial(venta); // guardar permanentemente
+  // Imprimir ticket automáticamente antes de limpiar
+  printTicket('salon');
+  // Limpiar mesa
+  mesas[curMesa-1].pedido=[]; mesas[curMesa-1].nota='';
+  renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+function anularOrder() {
+  const m = mesas[curMesa-1];
+  if(!m.pedido.length) return;
+  if(!confirm('¿Anular todo el pedido de Mesa '+curMesa+'?\nEsto NO registra venta.')) return;
+  mesas[curMesa-1].pedido=[]; mesas[curMesa-1].nota='';
+  renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+// ═══════════════════════════════════════
+// COMPARTIR TICKET (imagen para WhatsApp)
+// ═══════════════════════════════════════
+function buildTicketText(pedido, origen, nota, total) {
+  let txt = '🍜 *CHIFA SUKI*\n';
+  txt += 'Cocina Oriental · 912 366 079\n';
+  txt += '─────────────────────\n';
+  txt += `*${origen}*\n`;
+  txt += `📅 ${now()}\n`;
+  if(nota) txt += `📝 ${nota}\n`;
+  txt += '─────────────────────\n';
+  pedido.forEach(x => {
+    txt += `${x.qty}x ${x.name}  S/${(x.precio*x.qty).toFixed(2)}\n`;
+  });
+  txt += '─────────────────────\n';
+  txt += `*TOTAL: S/ ${total.toFixed(2)}*\n`;
+  txt += '─────────────────────\n';
+  txt += '¡Gracias por su visita!\nSíguenos: chifa.suki';
+  return txt;
+}
+
+function compartirTicket() {
+  const m = mesas[curMesa-1];
+  if(!m.pedido.length){alert('No hay items para compartir.');return;}
+  const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const txt = buildTicketText(m.pedido, 'Mesa '+m.id, m.nota, total);
+  if(navigator.share) {
+    navigator.share({ title:'Ticket Chifa Suki', text: txt })
+      .catch(()=>{});
+  } else {
+    // Fallback: copiar al portapapeles
+    navigator.clipboard.writeText(txt).then(()=>{
+      alert('✓ Ticket copiado al portapapeles.\nPégalo en WhatsApp u otra app.');
+    }).catch(()=>{
+      // Último fallback: mostrar en prompt para copiar
+      prompt('Copia este ticket:', txt);
+    });
+  }
+}
+
+function compartirTicketLlevar() {
+  const o = ordenes[curOrden-1];
+  if(!o.pedido.length){alert('No hay items para compartir.');return;}
+  const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const label = 'Para llevar — Orden '+curOrden+(o.nota?' ('+o.nota+')':'');
+  const txt = buildTicketText(o.pedido, label, o.nota, total);
+  if(navigator.share) {
+    navigator.share({ title:'Ticket Chifa Suki', text: txt })
+      .catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(txt).then(()=>{
+      alert('✓ Ticket copiado al portapapeles.\nPégalo en WhatsApp u otra app.');
+    }).catch(()=>{
+      prompt('Copia este ticket:', txt);
+    });
+  }
+}
+
+function reimprimirVenta(vi) {
+  const v = ventas[vi];
+  if(!v) return;
+  const total = v.total;
+  const html = `<style>
+    @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
+    .c{text-align:center}.sep{border-top:1px dashed #000;margin:3px 0}.sep2{border-top:1.5px solid #000;margin:3px 0}
+    .hd{font-size:10px;color:#888}.mesa{font-size:13px;font-weight:700;color:#333}
+    .row{display:flex;justify-content:space-between;gap:4px;margin:4px 0;align-items:baseline}
+    .rn{flex:1;font-size:16px;font-weight:700}.rp{white-space:nowrap;font-size:16px;font-weight:700}
+    .sub{font-size:10px;color:#999;padding-left:6px;margin-bottom:2px}
+    .tot{display:flex;justify-content:space-between;font-size:20px;font-weight:900;margin-top:3px}
+    .nota{font-size:12px;font-weight:600}
+  </style>
+  <div class="c hd">CHIFA SUKI · 912 366 079</div>
+  <div class="sep2"></div>
+  <div class="mesa">${v.origen} &nbsp;<span style="font-weight:400;font-size:11px;color:#888">${v.hora}</span></div>
+  ${v.nota?`<div class="nota">${v.nota}</div>`:''}
+  <div class="hd" style="font-style:italic">★ reimpresión ★</div>
+  <div class="sep"></div>
+  ${v.items.map(x=>`<div class="row"><span class="rn">${x.qty}x ${x.name}</span><span class="rp">S/${(x.precio*x.qty).toFixed(2)}</span></div><div class="sub">@ S/${x.precio.toFixed(2)} c/u</div>`).join('')}
+  <div class="sep2"></div>
+  <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
+  <div class="sep"></div>
+  <div class="c hd">Gracias · chifa.suki</div><br>`;
+
+  const win = window.open('','_blank','width=400,height=600');
+  if(win) {
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reimpresión</title></head><body>'+html+'</body></html>');
+    win.document.close();
+    win.onload = ()=>{ win.focus(); win.print(); };
+  } else {
+    const pf = document.getElementById('print-frame');
+    pf.innerHTML=html; pf.style.display='block';
+    document.querySelector('.app').style.display='none';
+    window.print();
+    setTimeout(()=>{ pf.innerHTML=''; pf.style.display='none'; document.querySelector('.app').style.display='flex'; },1000);
+  }
+}
+
+function compartirVenta(vi) {
+  const v = ventas[vi];
+  if(!v) return;
+  const txt = buildTicketText(v.items, v.origen, v.nota, v.total);
+  if(navigator.share) {
+    navigator.share({ title:'Ticket Chifa Suki', text: txt }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(txt).then(()=>{
+      alert('✓ Ticket copiado al portapapeles.');
+    }).catch(()=>{ prompt('Copia este ticket:', txt); });
+  }
+}
+
+
+function now() {
+  const d = new Date();
+  return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'})
+    + ' ' + d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+}
+
+function printTicket(tipo) {
+  const m = mesas[curMesa-1];
+  if(!m.pedido.length){ alert('No hay items para imprimir.'); return; }
+  const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+
+  // Separar bebidas/extras de comida para cocina
+  const cocina = m.pedido.filter(x=>x.tipo!=='Bebida'&&x.tipo!=='Extra');
+  const resto = m.pedido.filter(x=>x.tipo==='Bebida'||x.tipo==='Extra');
+
+  let html = '';
+
+  if(tipo==='salon') {
+    // ── TICKET SALÓN ──
+    html = `
+    <style>
+      @page{size:80mm auto;margin:0}
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
+      .c{text-align:center}
+      .sep{border-top:1px dashed #000;margin:3px 0}
+      .sep2{border-top:1.5px solid #000;margin:3px 0}
+      .hd{font-size:10px;color:#888}
+      .mesa{font-size:13px;font-weight:700;color:#333}
+      .row{display:flex;justify-content:space-between;gap:4px;margin:4px 0;align-items:baseline}
+      .rn{flex:1;font-size:16px;font-weight:700}
+      .rp{white-space:nowrap;font-size:16px;font-weight:700}
+      .sub{font-size:10px;color:#999;padding-left:6px;margin-bottom:2px}
+      .tot{display:flex;justify-content:space-between;font-size:20px;font-weight:900;margin-top:3px}
+      .nota{font-size:12px;font-weight:600}
+    </style>
+    <div class="c hd">CHIFA SUKI · 912 366 079</div>
+    <div class="sep2"></div>
+    <div class="mesa">Mesa ${m.id} &nbsp;<span style="font-weight:400;font-size:11px;color:#888">${now()}</span></div>
+    <div class="sep"></div>
+    ${m.pedido.map(x=>`
+      <div class="row"><span class="rn">${x.qty}x ${x.name}</span><span class="rp">S/${(x.precio*x.qty).toFixed(2)}</span></div>
+      <div class="sub">@ S/${x.precio.toFixed(2)} c/u</div>
+    `).join('')}
+    <div class="sep2"></div>
+    <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
+    ${m.nota?`<div class="sep"></div><div class="nota">Nota: ${m.nota}</div>`:''}
+    <div class="sep"></div>
+    <div class="c hd">Gracias · chifa.suki</div>
+    <br>`;
+
+  } else {
+    // ── TICKET COCINA ──
+    html = `
+    <style>
+      @page{size:80mm auto;margin:0}
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
+      .c{text-align:center}
+      .sep{border-top:1.5px solid #000;margin:4px 0}
+      .sep2{border-top:1px dashed #000;margin:3px 0}
+      .hd{font-size:10px;color:#888}
+      .mesa{font-size:18px;font-weight:900}
+      .irow{display:flex;align-items:baseline;gap:6px;padding:5px 0;border-bottom:1px dotted #bbb}
+      .iq{font-size:16px;font-weight:700;min-width:22px}
+      .in{font-size:16px;font-weight:700;flex:1;line-height:1.3}
+      .ip{font-size:14px;font-weight:600;color:#444;white-space:nowrap}
+      .nota{font-size:13px;font-weight:700}
+      .bev{font-size:11px;color:#555}
+    </style>
+    <div class="c hd">--- COCINA ---</div>
+    <div class="c mesa">MESA ${m.id}</div>
+    <div class="c hd">${now()}</div>
+    <div class="sep"></div>
+    ${cocina.length ? cocina.map(x=>`
+      <div class="irow">
+        <span class="iq">${x.qty}</span>
+        <span class="in">${x.name}</span>
+        <span class="ip">S/${x.precio.toFixed(2)}</span>
+      </div>
+    `).join('') : '<div class="hd">Sin platos</div>'}
+    ${m.nota?`<div class="sep"></div><div class="nota">⚠ ${m.nota}</div>`:''}
+    ${resto.length?`<div class="sep2"></div><div class="hd">BEBIDAS/EXTRAS:</div>${resto.map(x=>`<div class="bev">${x.qty}x ${x.name}</div>`).join('')}`:''}
+    <br>`;
+  }
+
+  // Abrir ventana de impresión
+  const win = window.open('','_blank','width=400,height=600');
+  if(win) {
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket '+(tipo==='salon'?'Salón':'Cocina')+' — Mesa '+m.id+'</title></head><body>'+html+'</body></html>');
+    win.document.close();
+    win.onload = ()=>{ win.focus(); win.print(); };
+  } else {
+    // Fallback para móvil: mostrar en pantalla y usar print()
+    const pf = document.getElementById('print-frame');
+    pf.innerHTML = html;
+    pf.style.display = 'block';
+    document.querySelector('.app').style.display = 'none';
+    window.print();
+    setTimeout(()=>{
+      pf.innerHTML = '';
+      pf.style.display = 'none';
+      document.querySelector('.app').style.display = 'flex';
+    }, 1000);
+  }
+}
+
+// ═══════════════════════════════════════
+// RESUMEN
+// ═══════════════════════════════════════
+function renderResumen() {
+  const el = document.getElementById('resumen-content');
+  const occ = mesas.filter(m=>m.pedido.length>0);
+  const occOrdenes = ordenes.filter(o=>o.pedido.length>0);
+  const totalVentas = ventas.reduce((a,v)=>a+v.total,0);
+  const totalActivo = [...occ.map(m=>m.pedido.reduce((a,x)=>a+x.precio*x.qty,0)),
+                       ...occOrdenes.map(o=>o.pedido.reduce((a,x)=>a+x.precio*x.qty,0))].reduce((a,b)=>a+b,0);
+
+  let html = '<div style="height:10px;"></div>';
+
+  // ── TARJETAS RESUMEN ──
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px;">
+    <div style="background:#e8f5e9;border-radius:var(--radius);padding:12px;text-align:center;">
+      <div style="font-size:11px;color:#2e7d32;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Cobrado hoy</div>
+      <div style="font-size:22px;font-weight:700;color:#2e7d32;margin-top:4px;">S/ ${totalVentas.toFixed(2)}</div>
+      <div style="font-size:11px;color:#388e3c;margin-top:2px;">${ventas.length} venta(s)</div>
+    </div>
+    <div style="background:var(--brand-light);border-radius:var(--radius);padding:12px;text-align:center;">
+      <div style="font-size:11px;color:var(--brand);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">En mesa / activo</div>
+      <div style="font-size:22px;font-weight:700;color:var(--brand);margin-top:4px;">S/ ${totalActivo.toFixed(2)}</div>
+      <div style="font-size:11px;color:var(--brand);margin-top:2px;">${occ.length+occOrdenes.length} pedido(s)</div>
+    </div>
+  </div>
+  <div style="margin:0 12px 12px;background:#fff8e1;border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:11px;color:#f57f17;font-weight:600;text-transform:uppercase;">Total del día</div>
+      <div style="font-size:26px;font-weight:700;color:#e65100;">S/ ${(totalVentas+totalActivo).toFixed(2)}</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:var(--text2);">
+      <div>${ventas.length} cobro(s)</div>
+      <div>${occ.length+occOrdenes.length} pendiente(s)</div>
+    </div>
+  </div>`;
+
+  // ── PEDIDOS ACTIVOS ──
+  if(occ.length || occOrdenes.length) {
+    html += `<div style="padding:0 12px 6px;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">Pedidos activos</div>`;
+    occOrdenes.forEach(o=>{
+      const t=o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+      html += `<div class="res-section" style="border-left:3px solid #1565c0;">
+        <div class="res-mesa-title"><span>Llevar — Orden ${o.id}${o.nota?' ('+o.nota+')':''}</span><span style="font-size:14px;">S/ ${t.toFixed(2)}</span></div>
+        ${o.pedido.map(x=>`<div class="res-item"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
+          <button onclick="irOrden(${o.id})" style="flex:1;padding:6px;background:#e3f2fd;color:#1565c0;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Editar</button>
+          <button onclick="curOrden=${o.id};printTicketLlevar('salon')" style="flex:1;padding:6px;background:#e3f2fd;color:#1565c0;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Ticket</button>
+          <button onclick="curOrden=${o.id};cobrarLlevar()" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Cobrar</button>
+        </div>
+      </div>`;
+    });
+    occ.forEach(m=>{
+      const t=m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+      html += `<div class="res-section">
+        <div class="res-mesa-title"><span>Mesa ${m.id}</span><span style="font-size:14px;">S/ ${t.toFixed(2)}</span></div>
+        ${m.nota?`<div class="res-nota">Nota: ${m.nota}</div>`:''}
+        ${m.pedido.map(x=>`<div class="res-item"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
+          <button onclick="irMesa(${m.id})" style="flex:1;padding:6px;background:var(--brand-light);color:var(--brand);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Editar</button>
+          <button onclick="curMesa=${m.id};printTicket('salon')" style="flex:1;padding:6px;background:#e3f2fd;color:#1565c0;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Ticket</button>
+          <button onclick="curMesa=${m.id};cobrarMesa()" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Cobrar</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  // ── HISTORIAL DE VENTAS ──
+  if(ventas.length) {
+    html += `<div style="padding:12px 12px 6px;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">Historial de cobros</div>`;
+    [...ventas].reverse().forEach((v,ri)=>{
+      const vi = ventas.length - 1 - ri; // índice real en el array
+      html += `<div class="res-section" style="border-left:3px solid #2e7d32;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div>
+            <span style="font-size:13px;font-weight:600;color:var(--text);">${v.origen}</span>
+            ${v.nota?`<span style="font-size:11px;color:var(--text2);margin-left:6px;">${v.nota}</span>`:''}
+          </div>
+          <span style="font-size:14px;font-weight:700;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:5px;">${v.hora}</div>
+        ${v.items.map(x=>`<div class="res-item" style="font-size:11px;"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
+          <button onclick="reimprimirVenta(${vi})" style="flex:1;padding:6px;background:#e3f2fd;color:#1565c0;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🖨 Reimprimir</button>
+          <button onclick="compartirVenta(${vi})" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">📤 Compartir</button>
+        </div>
+      </div>`;
+    });
+  } else if(!occ.length && !occOrdenes.length) {
+    html += `<div style="padding:24px 16px;text-align:center;color:var(--text3);font-size:13px;">Sin ventas registradas hoy.</div>`;
+  }
+
+  html += '<div style="height:20px;"></div>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// FIREBASE + SINCRONIZACIÓN EN TIEMPO REAL
+// ═══════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBvVbayJesWNSJ64HaydOfBfzu4cy3SnIM",
+  authDomain: "chifa-suki.firebaseapp.com",
+  projectId: "chifa-suki",
+  storageBucket: "chifa-suki.firebasestorage.app",
+  messagingSenderId: "210680785195",
+  appId: "1:210680785195:web:7d96d22057d849e0e33d6e",
+  measurementId: "G-1EH09XQVKS"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function setSyncStatus(msg, ok) {
+  const el = document.getElementById('sync-status');
+  if(el) el.textContent = msg;
+  const el2 = document.getElementById('drawer-sync');
+  if(el2) el2.textContent = msg;
+}
+
+// Guarda el estado completo de todas las mesas en Firestore
+// Guarda estado de mesas (temporal, se borra al cerrar día)
+function saveToCloud() {
+  const mesasData = mesas.map(m => ({id:m.id, pedido:m.pedido, nota:m.nota||''}));
+  const ordenesData = ordenes.map(o => ({id:o.id, pedido:o.pedido, nota:o.nota||''}));
+  db.collection('restaurante').doc('mesas').set({
+    mesas: mesasData,
+    ordenes: ordenesData,
+    ventas: ventas,
+    updatedAt: Date.now()
+  })
+    .then(() => setSyncStatus('✓ Sincronizado', true))
+    .catch(() => setSyncStatus('⚠ Sin conexión', false));
+}
+
+// Guarda cada venta PERMANENTEMENTE en historial/{fecha}/ventas/{id}
+function saveVentaHistorial(venta) {
+  const fecha = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  db.collection('historial').doc(fecha).collection('ventas').doc(String(venta.id)).set({
+    hora: venta.hora,
+    origen: venta.origen,
+    nota: venta.nota || '',
+    items: venta.items,
+    total: venta.total,
+    fecha: fecha,
+    ts: venta.id
+  }).catch(e => console.error('Error guardando historial:', e));
+}
+
+// ── HISTORIAL SCREEN ──
+function todayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function initHistorial() {
+  const input = document.getElementById('hist-fecha');
+  if(input && !input.value) input.value = todayStr();
+  cargarHistorial();
+}
+
+function cargarHistorial() {
+  const fecha = document.getElementById('hist-fecha').value || todayStr();
+  const el = document.getElementById('historial-content');
+  el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">Cargando...</div>`;
+
+  db.collection('historial').doc(fecha).collection('ventas').get()
+    .then(snap => {
+      if(snap.empty) {
+        el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">Sin ventas registradas para ${fecha}.</div>`;
+        return;
+      }
+      const ventasDia = snap.docs.map(d => d.data()).sort((a,b)=>a.ts-b.ts);
+      const total = ventasDia.reduce((a,v)=>a+v.total,0);
+      renderHistorialDia(ventasDia, total, fecha, el);
+    })
+    .catch(() => {
+      el.innerHTML = `<div style="text-align:center;padding:24px;color:#e53935;font-size:13px;">Error al cargar. Verifica conexión.</div>`;
+    });
+}
+
+function renderHistorialDia(ventasDia, total, fecha, el) {
+  let html = `<div style="background:#e8f5e9;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:11px;font-weight:600;color:#2e7d32;text-transform:uppercase;">Total del día ${fecha}</div>
+      <div style="font-size:22px;font-weight:700;color:#2e7d32;">S/ ${total.toFixed(2)}</div>
+    </div>
+    <div style="text-align:right;font-size:12px;color:#388e3c;">${ventasDia.length} venta(s)</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button onclick="exportarCSV('${fecha}')" style="flex:1;padding:9px;background:#1565c0;color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;">📊 Exportar CSV</button>
+    <button onclick="compartirResumenDia('${fecha}')" style="flex:1;padding:9px;background:#2e7d32;color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;">📤 Compartir</button>
+  </div>`;
+
+  ventasDia.forEach(v => {
+    html += `<div class="res-section" style="border-left:3px solid #2e7d32;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <span style="font-size:13px;font-weight:600;">${v.origen}</span>
+        <span style="font-size:13px;font-weight:700;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">${v.hora}${v.nota?' · '+v.nota:''}</div>
+      ${v.items.map(x=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
+    </div>`;
+  });
+
+  el.innerHTML = html;
+  // Guardamos para exportar
+  el._ventasDia = ventasDia;
+  el._total = total;
+  el._fecha = fecha;
+}
+
+function exportarCSV(fecha) {
+  const el = document.getElementById('historial-content');
+  const ventasDia = el._ventasDia || [];
+  if(!ventasDia.length) return;
+
+  let csv = 'Fecha,Hora,Origen,Nota,Producto,Cantidad,Precio unitario,Subtotal,Total venta\n';
+  ventasDia.forEach(v => {
+    v.items.forEach((x,i) => {
+      csv += `${fecha},"${v.hora}","${v.origen}","${v.nota||''}","${x.name}",${x.qty},${x.precio.toFixed(2)},${(x.precio*x.qty).toFixed(2)},${i===0?v.total.toFixed(2):''}\n`;
+    });
+  });
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chifa-suki-ventas-${fecha}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function compartirResumenDia(fecha) {
+  const el = document.getElementById('historial-content');
+  const ventasDia = el._ventasDia || [];
+  const total = el._total || 0;
+  if(!ventasDia.length) return;
+
+  let txt = `🍜 *CHIFA SUKI — Ventas del ${fecha}*\n`;
+  txt += `────────────────────\n`;
+  ventasDia.forEach(v => {
+    txt += `${v.hora} · ${v.origen}`;
+    if(v.nota) txt += ` (${v.nota})`;
+    txt += ` → *S/ ${v.total.toFixed(2)}*\n`;
+  });
+  txt += `────────────────────\n`;
+  txt += `*TOTAL: S/ ${total.toFixed(2)}*\n`;
+  txt += `${ventasDia.length} venta(s)`;
+
+  if(navigator.share) {
+    navigator.share({ title:`Ventas Chifa Suki ${fecha}`, text: txt }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(txt).then(()=>{
+      alert('✓ Resumen copiado al portapapeles.');
+    }).catch(()=>{ prompt('Copia el resumen:', txt); });
+  }
+}
+
+// Escucha cambios en tiempo real desde Firestore
+function startRealtimeSync() {
+  db.collection('restaurante').doc('mesas').onSnapshot(doc => {
+    if(!doc.exists) { saveToCloud(); return; }
+    const data = doc.data();
+    const remoteTs = data.updatedAt || 0;
+    if(remoteTs <= localLastSave) return;
+
+    if(data.mesas && Array.isArray(data.mesas)) {
+      mesas = data.mesas.map(m => ({id:m.id, pedido:m.pedido||[], nota:m.nota||''}));
+    }
+    if(data.ordenes && Array.isArray(data.ordenes)) {
+      ordenes = data.ordenes.map(o => ({id:o.id, pedido:o.pedido||[], nota:o.nota||''}));
+    }
+    if(data.ventas && Array.isArray(data.ventas)) {
+      ventas = data.ventas;
+    }
+    renderMesas();
+    renderOrdenesGrid();
+    renderOrderList();
+    renderLlevarList();
+    updateMobCounter();
+    setSyncStatus('✓ Sincronizado', true);
+  }, () => setSyncStatus('⚠ Sin conexión', false));
+  setSyncStatus('✓ En línea', true);
+}
+
+let localLastSave = 0;
+
+// Override doAdd, chgQty, delItem, clearOrder para guardar en la nube
+const _doAdd = doAdd;
+function doAdd(name, precio, tipo) {
+  if(isLlevarMode) { doAddLlevar(name, precio, tipo); return; }
+  const m = mesas[curMesa-1];
+  const ex = m.pedido.find(x=>x.name===name);
+  if(ex) { ex.qty++; } else { m.pedido.push({name, precio, qty:1, tipo}); }
+  renderOrderList();
+  renderMesas();
+  renderMesaStrip();
+  updateMobCounter();
+  localLastSave = Date.now();
+  saveToCloud();
+}
+
+const _chgQty = chgQty;
+function chgQty(i, d) {
+  const m = mesas[curMesa-1];
+  m.pedido[i].qty += d;
+  if(m.pedido[i].qty<=0) m.pedido.splice(i,1);
+  renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
+  localLastSave = Date.now();
+  saveToCloud();
+}
+
+const _delItem = delItem;
+function delItem(i) {
+  mesas[curMesa-1].pedido.splice(i,1);
+  renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
+  localLastSave = Date.now();
+  saveToCloud();
+}
+
+const _clearOrder = clearOrder;
+function clearOrder() {
+  if(!confirm('¿Limpiar todo el pedido de Mesa '+curMesa+'?')) return;
+  mesas[curMesa-1].pedido=[];
+  mesas[curMesa-1].nota='';
+  renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
+  localLastSave = Date.now();
+  saveToCloud();
+}
+
+const _resetDia = resetDia;
+function resetDia() {
+  const totalHoy = ventas.reduce((a,v)=>a+v.total,0);
+  const msg = ventas.length
+    ? `¿Cerrar el día?\n\nTotal cobrado: S/ ${totalHoy.toFixed(2)}\n(${ventas.length} venta(s))\n\nSe borrarán todos los datos del día.`
+    : '¿Cerrar el día y reiniciar todas las mesas?';
+  if(!confirm(msg)) return;
+  mesas=Array.from({length:9},(_,i)=>({id:i+1,pedido:[],nota:''}));
+  ordenes=Array.from({length:6},(_,i)=>({id:i+1,pedido:[],nota:''}));
+  ventas=[];
+  menuEntSel={};
+  localLastSave = Date.now();
+  saveToCloud();
+  renderResumen();
+  renderMesas();
+  renderOrdenesGrid();
+}
+
+// Guardar nota al cambiar
+document.addEventListener('change', e => {
+  if(e.target && e.target.id === 'nota-in') {
+    mesas[curMesa-1].nota = e.target.value;
+    localLastSave = Date.now();
+    saveToCloud();
+  }
+});
+
+// ═══════════════════════════════════════
+// SERVICE WORKER + PWA INSTALL
+// ═══════════════════════════════════════
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('install-banner');
+  banner.classList.remove('hidden');
+});
+
+document.getElementById('btn-install').addEventListener('click', async () => {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const {outcome} = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('install-banner').classList.add('hidden');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').classList.add('hidden');
+});
+
+if('serviceWorker' in navigator) {
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+// close modal on backdrop click
+document.getElementById('modal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('modal')) closeModal();
+});
+document.getElementById('modal-wantan').addEventListener('click', e=>{
+  if(e.target===document.getElementById('modal-wantan')) closeWantanModal();
+});
+
+// Init
+renderMesas();
+renderOrdenesGrid();
+startRealtimeSync();
+</script>
+</body>
+</html>
