@@ -1957,19 +1957,42 @@ function clearOrder() {
 const _resetDia = resetDia;
 function resetDia() {
   const totalHoy = ventas.reduce((a,v)=>a+v.total,0);
-  const msg = ventas.length
-    ? `¿Cerrar el día?\n\nTotal cobrado: S/ ${totalHoy.toFixed(2)}\n(${ventas.length} venta(s))\n\nSe borrarán todos los datos del día.`
+  const mesasActivas = mesas.filter(m=>m.pedido.length>0);
+  const ordenesActivas = ordenes.filter(o=>o.pedido.length>0);
+  const pendientes = mesasActivas.length + ordenesActivas.length;
+
+  let msg = '';
+  if(pendientes > 0) {
+    const totalPend = [
+      ...mesasActivas.map(m=>m.pedido.reduce((a,x)=>a+x.precio*x.qty,0)),
+      ...ordenesActivas.map(o=>o.pedido.reduce((a,x)=>a+x.precio*x.qty,0))
+    ].reduce((a,b)=>a+b,0);
+    msg = `⚠️ Hay ${pendientes} pedido(s) sin cobrar (S/ ${totalPend.toFixed(2)}) que se perderán.\n\n`;
+  }
+  msg += ventas.length
+    ? `Total cobrado hoy: S/ ${totalHoy.toFixed(2)} (${ventas.length} venta(s))\n\n¿Cerrar el día y ver el historial?`
     : '¿Cerrar el día y reiniciar todas las mesas?';
+
   if(!confirm(msg)) return;
+
+  const fechaHoy = new Date().toISOString().slice(0,10);
+
   mesas=Array.from({length:9},(_,i)=>({id:i+1,pedido:[],nota:''}));
   ordenes=Array.from({length:6},(_,i)=>({id:i+1,pedido:[],nota:''}));
   ventas=[];
   menuEntSel={};
   localLastSave = Date.now();
   saveToCloud();
-  renderResumen();
   renderMesas();
   renderOrdenesGrid();
+
+  // Ir directo al historial del día cerrado
+  showScreen('historial');
+  setTimeout(()=>{
+    const input = document.getElementById('hist-fecha');
+    if(input) input.value = fechaHoy;
+    cargarHistorial();
+  }, 300);
 }
 
 // Guardar nota al cambiar
