@@ -1,11 +1,11 @@
 {
   "name": "Chifa Suki - Pedidos",
   "short_name": "Chifa Suki",
-  "description": "Sistema de gestión de pedidos y mesas",
+  "description": "Sistema de gesti\u00f3n de pedidos y mesas",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#B85432",
+  "background_color": "#8B0000",
+  "theme_color": "#8B0000",
   "orientation": "portrait-primary",
   "icons": [
     {
