@@ -182,6 +182,11 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: flex-end; justify-content: center; backdrop-filter: blur(2px); }
 .modal-overlay.open { display: flex; }
 .modal-box { background: var(--paper); border-radius: 16px 16px 0 0; padding: 20px 20px 32px; width: 100%; max-width: 480px; }
+.size-opt { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; margin: 8px 0; background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.size-opt:active { background: var(--brand); border-color: var(--brand); }
+.size-opt:active .size-opt-label, .size-opt:active .size-opt-price { color: white; }
+.size-opt-label { font-size: 16px; font-weight: 600; color: var(--text); }
+.size-opt-price { font-size: 18px; font-weight: 800; color: var(--brand); }
 </style>
 </head>
 <body>
