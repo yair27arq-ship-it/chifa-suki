@@ -203,38 +203,39 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 <!-- MODAL COBRO -->
 <div class="modal-overlay" id="modal-cobro">
-  <div class="modal-box" style="max-width:340px;">
+  <div class="modal-box" style="max-width:360px;padding-bottom:24px;">
     <div class="modal-handle"></div>
-    <button class="modal-close" onclick="closeCobro()">x</button>
+    <button class="modal-close" onclick="closeCobro()">×</button>
     <div class="modal-title" id="cobro-title">Cobrar</div>
-    <div style="margin:10px 0 14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;margin-bottom:14px;">
-        <span style="font-size:13px;color:var(--text2);font-weight:600;">TOTAL A COBRAR</span>
-        <span id="cobro-total-display" style="font-size:26px;font-weight:900;color:var(--brand);">S/ 0.00</span>
+
+    <!-- Total y pendiente -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <div style="flex:1;padding:10px 12px;background:var(--bg);border-radius:10px;">
+        <div style="font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;margin-bottom:2px;">Total</div>
+        <div id="cobro-total-display" style="font-size:22px;font-weight:900;color:var(--brand);">S/ 0.00</div>
       </div>
-      <div style="font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Metodo de pago</div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button id="cobro-btn-efectivo" class="cobro-metodo active" onclick="selectMetodo('efectivo')">Efectivo</button>
-        <button id="cobro-btn-yape" class="cobro-metodo" onclick="selectMetodo('yape')">Yape/Plin</button>
-        <button id="cobro-btn-tarjeta" class="cobro-metodo" onclick="selectMetodo('tarjeta')">Tarjeta</button>
-      </div>
-      <div id="cobro-efectivo-section">
-        <div style="font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Dinero recibido del cliente</div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-          <span style="font-size:15px;font-weight:700;color:var(--text2);">S/</span>
-          <input id="cobro-recibido" type="number" min="0" step="0.5" class="nota-in" style="margin:0;font-size:20px;font-weight:700;text-align:right;" placeholder="0.00" oninput="calcVuelto()" />
-        </div>
-        <div id="cobro-rapidos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
-        <div id="cobro-vuelto-box" style="display:none;padding:12px 14px;border-radius:10px;margin-bottom:4px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:13px;font-weight:700;" id="cobro-vuelto-label">VUELTO</span>
-            <span id="cobro-vuelto-val" style="font-size:28px;font-weight:900;"></span>
-          </div>
-          <div id="cobro-caja-hint" style="font-size:11px;margin-top:4px;display:none;">La caja se abrira automaticamente</div>
-        </div>
+      <div id="cobro-pendiente-box" style="flex:1;padding:10px 12px;background:#fff3e0;border-radius:10px;display:none;">
+        <div style="font-size:10px;color:#e65100;font-weight:600;text-transform:uppercase;margin-bottom:2px;">Pendiente</div>
+        <div id="cobro-pendiente-val" style="font-size:22px;font-weight:900;color:#e65100;">S/ 0.00</div>
       </div>
     </div>
-    <button id="cobro-confirm-btn" onclick="confirmarCobro()" style="width:100%;padding:14px;background:#1b5e20;color:white;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:800;cursor:pointer;">CONFIRMAR COBRO</button>
+
+    <!-- Líneas de pago -->
+    <div id="cobro-lineas"></div>
+
+    <!-- Botón agregar otra forma de pago -->
+    <button id="cobro-add-linea-btn" onclick="agregarLineaPago()" style="width:100%;padding:9px;background:none;border:1.5px dashed var(--border2);border-radius:10px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;margin-bottom:12px;">+ Agregar otro método de pago</button>
+
+    <!-- Resumen vuelto -->
+    <div id="cobro-vuelto-box" style="display:none;padding:11px 14px;border-radius:10px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;font-weight:700;" id="cobro-vuelto-label">VUELTO</span>
+        <span id="cobro-vuelto-val" style="font-size:26px;font-weight:900;"></span>
+      </div>
+      <div id="cobro-caja-hint" style="font-size:11px;color:#2e7d32;margin-top:3px;display:none;">🗃 La caja se abrirá automáticamente</div>
+    </div>
+
+    <button onclick="confirmarCobro()" style="width:100%;padding:14px;background:#1b5e20;color:white;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:800;cursor:pointer;">✓ CONFIRMAR COBRO</button>
   </div>
 </div>
 
@@ -1195,16 +1196,21 @@ function addCustomItem() {
 function openModal(title,sub,sizes) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-sub').textContent = sub;
-  document.getElementById('modal-options').innerHTML = sizes.map(s=>
-    `<div class="size-opt" onclick="pickSize('${s.l}',${s.p})">
+  // Guardamos sizes en el pendingItem para acceder por índice (evita problemas con tildes/caracteres especiales en onclick)
+  if(pendingItem) pendingItem.sizes = sizes;
+  document.getElementById('modal-options').innerHTML = sizes.map((s,i)=>
+    `<div class="size-opt" onclick="pickSize(${i})">
       <span class="size-opt-label">${s.l}</span>
       <span class="size-opt-price">S/ ${s.p}</span>
     </div>`).join('');
   document.getElementById('modal').classList.add('open');
 }
 
-function pickSize(label,price) {
-  doAdd(pendingItem.item.name+' ('+label+')',price,pendingItem.src);
+function pickSize(idx) {
+  if(!pendingItem) return;
+  const sizes = pendingItem.sizes || pendingItem.item.sizes;
+  const s = sizes[idx];
+  doAdd(pendingItem.item.name+' ('+s.l+')', s.p, pendingItem.src);
   closeModal();
 }
 
@@ -2011,162 +2017,230 @@ document.getElementById('modal-wantan').addEventListener('click', e=>{
 });
 
 // ═══════════════════════════════════════
-// MODAL COBRO
+// MODAL COBRO (pago mixto)
 // ═══════════════════════════════════════
 let cobroTotal = 0;
 let cobroOrigen = ''; // 'mesa' | 'llevar'
-let cobroMetodo = 'efectivo';
+let cobroLineas = []; // [{metodo, monto}]
+
+const METODOS = {
+  efectivo: { label: '💵 Efectivo', color: '#2e7d32' },
+  yape:     { label: '📱 Yape/Plin', color: '#6a1b9a' },
+  tarjeta:  { label: '💳 Tarjeta',   color: '#1565c0' },
+};
 
 function abrirModalCobro(label, total, origen) {
   cobroTotal = total;
   cobroOrigen = origen;
-  cobroMetodo = 'efectivo';
+  cobroLineas = [{ metodo: 'efectivo', monto: '' }];
   document.getElementById('cobro-title').textContent = 'Cobrar — ' + label;
   document.getElementById('cobro-total-display').textContent = 'S/ ' + total.toFixed(2);
-  document.getElementById('cobro-recibido').value = '';
-  document.getElementById('cobro-vuelto-box').style.display = 'none';
-  document.getElementById('cobro-caja-hint').style.display = 'none';
-  // Reset método
-  ['efectivo','yape','tarjeta'].forEach(m => {
-    document.getElementById('cobro-btn-'+m).classList.toggle('active', m==='efectivo');
-  });
-  document.getElementById('cobro-efectivo-section').style.display = 'block';
-  // Botones rápidos de billetes comunes
-  const rapidos = document.getElementById('cobro-rapidos');
-  const billetes = [10,20,50,100].filter(b => b >= total);
-  // Siempre incluir el exacto y los billetes mayores
-  const exacto = Math.ceil(total);
-  const opciones = [...new Set([exacto, ...billetes])].sort((a,b)=>a-b).slice(0,5);
-  rapidos.innerHTML = opciones.map(v =>
-    `<button onclick="setRecibido(${v})" style="flex:1;min-width:50px;padding:8px 4px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-weight:700;background:none;cursor:pointer;">S/${v}</button>`
-  ).join('');
+  renderCobroLineas();
+  actualizarResumenCobro();
   document.getElementById('modal-cobro').classList.add('open');
-  setTimeout(()=>{ const el = document.getElementById('cobro-recibido'); if(el) el.focus(); }, 200);
+  setTimeout(() => { const el = document.querySelector('.cobro-monto-input'); if(el) el.focus(); }, 200);
 }
 
 function closeCobro() {
   document.getElementById('modal-cobro').classList.remove('open');
 }
 
-function selectMetodo(m) {
-  cobroMetodo = m;
-  ['efectivo','yape','tarjeta'].forEach(x => {
-    document.getElementById('cobro-btn-'+x).classList.toggle('active', x===m);
-  });
-  document.getElementById('cobro-efectivo-section').style.display = m==='efectivo' ? 'block' : 'none';
+function renderCobroLineas() {
+  const container = document.getElementById('cobro-lineas');
+  container.innerHTML = cobroLineas.map((ln, i) => {
+    const pendiente = cobroLineas.slice(0, i).reduce((s, x) => s - (parseFloat(x.monto) || 0), cobroTotal);
+    const sugerido = pendiente > 0 ? pendiente.toFixed(2) : '';
+    return `
+    <div style="background:var(--bg);border-radius:12px;padding:11px 12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="display:flex;gap:6px;">
+          ${Object.entries(METODOS).map(([k,v]) =>
+            `<button onclick="cambiarMetodoLinea(${i},'${k}')"
+              style="padding:6px 10px;border-radius:8px;border:1.5px solid ${ln.metodo===k ? v.color : 'var(--border2)'};
+              background:${ln.metodo===k ? v.color : 'none'};color:${ln.metodo===k ? 'white' : 'var(--text)'};
+              font-size:11px;font-weight:700;cursor:pointer;">${v.label}</button>`
+          ).join('')}
+        </div>
+        ${cobroLineas.length > 1 ? `<button onclick="quitarLineaPago(${i})" style="background:none;border:none;color:#e53935;font-size:18px;cursor:pointer;padding:0 4px;">×</button>` : ''}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+        <span style="font-size:14px;font-weight:700;color:var(--text2);">S/</span>
+        <input type="number" min="0" step="0.5" class="nota-in cobro-monto-input"
+          style="margin:0;font-size:20px;font-weight:700;text-align:right;flex:1;"
+          placeholder="${sugerido || '0.00'}"
+          value="${ln.monto}"
+          data-idx="${i}"
+          oninput="onMontoLinea(${i}, this.value)" />
+      </div>
+      ${ln.metodo === 'efectivo' ? renderBotonesRapidos(i, pendiente) : ''}
+    </div>`;
+  }).join('');
 }
 
-function setRecibido(val) {
-  document.getElementById('cobro-recibido').value = val;
-  calcVuelto();
+function renderBotonesRapidos(idx, pendiente) {
+  if(pendiente <= 0) return '';
+  const billetes = [10, 20, 50, 100].filter(b => b >= pendiente);
+  const exacto = Math.ceil(pendiente);
+  const opciones = [...new Set([exacto, ...billetes])].sort((a,b)=>a-b).slice(0,5);
+  return `<div style="display:flex;gap:5px;flex-wrap:wrap;">
+    ${opciones.map(v => `<button onclick="setMontoLinea(${idx},${v})"
+      style="flex:1;min-width:44px;padding:7px 4px;border:1px solid var(--border2);border-radius:8px;
+      font-size:12px;font-weight:700;background:none;cursor:pointer;">S/${v}</button>`).join('')}
+  </div>`;
 }
 
-function calcVuelto() {
-  const recibido = parseFloat(document.getElementById('cobro-recibido').value) || 0;
+function cambiarMetodoLinea(i, metodo) {
+  cobroLineas[i].metodo = metodo;
+  renderCobroLineas();
+  actualizarResumenCobro();
+}
+
+function agregarLineaPago() {
+  cobroLineas.push({ metodo: 'yape', monto: '' });
+  renderCobroLineas();
+  actualizarResumenCobro();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.cobro-monto-input');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  }, 50);
+}
+
+function quitarLineaPago(i) {
+  cobroLineas.splice(i, 1);
+  renderCobroLineas();
+  actualizarResumenCobro();
+}
+
+function onMontoLinea(i, val) {
+  cobroLineas[i].monto = val;
+  actualizarResumenCobro();
+  // Re-render solo los botones rápidos del siguiente (si existe y es efectivo)
+  const next = cobroLineas[i+1];
+  if(next && next.metodo === 'efectivo') renderCobroLineas();
+}
+
+function setMontoLinea(i, val) {
+  cobroLineas[i].monto = val;
+  renderCobroLineas();
+  actualizarResumenCobro();
+}
+
+function actualizarResumenCobro() {
+  const totalPagado = cobroLineas.reduce((s, x) => s + (parseFloat(x.monto) || 0), 0);
+  const diferencia = totalPagado - cobroTotal;
+  const pendienteBox = document.getElementById('cobro-pendiente-box');
+  const pendienteVal = document.getElementById('cobro-pendiente-val');
   const vueltoBox = document.getElementById('cobro-vuelto-box');
   const vueltoVal = document.getElementById('cobro-vuelto-val');
   const vueltoLabel = document.getElementById('cobro-vuelto-label');
   const cajaHint = document.getElementById('cobro-caja-hint');
-  if(recibido <= 0) { vueltoBox.style.display='none'; return; }
-  const vuelto = recibido - cobroTotal;
-  vueltoBox.style.display = 'block';
-  if(vuelto < 0) {
-    vueltoBox.style.background = '#fff3e0';
-    vueltoLabel.textContent = 'FALTA';
-    vueltoLabel.style.color = '#e65100';
-    vueltoVal.textContent = 'S/ ' + Math.abs(vuelto).toFixed(2);
-    vueltoVal.style.color = '#e65100';
-    cajaHint.style.display = 'none';
-  } else if(vuelto === 0) {
-    vueltoBox.style.background = '#e8f5e9';
-    vueltoLabel.textContent = 'EXACTO';
-    vueltoLabel.style.color = '#2e7d32';
-    vueltoVal.textContent = 'S/ 0.00';
-    vueltoVal.style.color = '#2e7d32';
-    cajaHint.style.display = 'block';
+  const addBtn = document.getElementById('cobro-add-linea-btn');
+
+  if(totalPagado <= 0) {
+    pendienteBox.style.display = 'none';
+    vueltoBox.style.display = 'none';
+    addBtn.style.display = 'block';
+    return;
+  }
+
+  if(diferencia < -0.009) {
+    // Falta dinero
+    pendienteBox.style.display = 'block';
+    pendienteVal.textContent = 'S/ ' + Math.abs(diferencia).toFixed(2);
+    vueltoBox.style.display = 'none';
+    addBtn.style.display = 'block';
   } else {
-    vueltoBox.style.background = '#e8f5e9';
-    vueltoLabel.textContent = 'VUELTO';
-    vueltoLabel.style.color = '#1b5e20';
-    vueltoVal.textContent = 'S/ ' + vuelto.toFixed(2);
-    vueltoVal.style.color = '#1b5e20';
-    cajaHint.style.display = 'block';
+    pendienteBox.style.display = 'none';
+    addBtn.style.display = diferencia > 0.009 ? 'none' : 'block';
+    vueltoBox.style.display = 'block';
+    const tieneEfectivo = cobroLineas.some(l => l.metodo === 'efectivo' && parseFloat(l.monto) > 0);
+    if(Math.abs(diferencia) < 0.01) {
+      vueltoBox.style.background = '#e8f5e9';
+      vueltoLabel.textContent = 'EXACTO ✓';
+      vueltoLabel.style.color = '#2e7d32';
+      vueltoVal.textContent = 'S/ 0.00';
+      vueltoVal.style.color = '#2e7d32';
+      cajaHint.style.display = tieneEfectivo ? 'block' : 'none';
+    } else {
+      vueltoBox.style.background = '#e8f5e9';
+      vueltoLabel.textContent = 'VUELTO';
+      vueltoLabel.style.color = '#1b5e20';
+      vueltoVal.textContent = 'S/ ' + diferencia.toFixed(2);
+      vueltoVal.style.color = '#1b5e20';
+      cajaHint.style.display = tieneEfectivo ? 'block' : 'none';
+    }
   }
 }
 
+function confirmarCobro() {
+  const totalPagado = cobroLineas.reduce((s, x) => s + (parseFloat(x.monto) || 0), 0);
+  if(totalPagado < cobroTotal - 0.009) {
+    alert('Falta S/ ' + (cobroTotal - totalPagado).toFixed(2) + ' por cubrir.');
+    return;
+  }
+  // Construir resumen de métodos para ticket
+  const lineasFinal = cobroLineas.filter(l => parseFloat(l.monto) > 0).map(l => ({
+    metodo: l.metodo,
+    monto: parseFloat(l.monto) || 0
+  }));
+  const tieneEfectivo = lineasFinal.some(l => l.metodo === 'efectivo');
+  const vuelto = totalPagado - cobroTotal;
+  closeCobro();
+  if(cobroOrigen === 'mesa') {
+    _ejecutarCobroMesa(lineasFinal, vuelto);
+  } else {
+    _ejecutarCobroLlevar(lineasFinal, vuelto);
+  }
+  if(tieneEfectivo) abrirCajaRegistradora();
+}
+
 function abrirCajaRegistradora() {
-  // Comando ESC/POS para abrir cajón: DLE EOT 1 o ESC p 0 50 250
-  // Se envía a través de la API de impresión usando un ticket especial
-  const html = `<style>@page{size:1mm 1mm;margin:0}body{margin:0}</style>` +
-    `<script>` +
-    `window.onload=function(){` +
-    // Enviar secuencia ESC/POS para abrir cajón via RawBT / PrintNode / impresora directa
-    // El navegador no puede enviar raw bytes, pero al imprimir un doc vacío
-    // muchas impresoras con cajón conectado lo abren automáticamente
-    `window.print();setTimeout(()=>window.close(),500);` +
-    `}` +
-    `<\/script>`;
+  const html = `<style>@page{size:1mm 1mm;margin:0}body{margin:0}</style><script>window.onload=function(){window.print();setTimeout(()=>window.close(),500);}<\/script>`;
   const win = window.open('','_blank','width=1,height=1');
   if(win) { win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'+html+'</body></html>'); win.document.close(); }
 }
 
-function confirmarCobro() {
-  if(cobroMetodo === 'efectivo') {
-    const recibido = parseFloat(document.getElementById('cobro-recibido').value) || 0;
-    if(recibido < cobroTotal) {
-      alert('El monto recibido (S/ '+recibido.toFixed(2)+') es menor al total (S/ '+cobroTotal.toFixed(2)+').');
-      return;
-    }
-  }
-  closeCobro();
-  // Registrar y procesar según origen
-  if(cobroOrigen === 'mesa') {
-    _ejecutarCobroMesa();
-  } else {
-    _ejecutarCobroLlevar();
-  }
-}
-
-function _ejecutarCobroMesa() {
+function _ejecutarCobroMesa(lineas, vuelto) {
   const m = mesas[curMesa-1];
   const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
   const venta = {
     id: Date.now(), hora: now(), origen: 'Mesa '+m.id,
     nota: m.nota||'', items: m.pedido.map(x=>({...x})), total,
-    metodoPago: cobroMetodo
+    pagos: lineas, vuelto
   };
   ventas.push(venta);
   saveVentaHistorial(venta);
-  // Imprimir ticket con método de pago y vuelto
-  printTicketConPago('salon', m.pedido, 'Mesa '+m.id, m.nota, total);
-  if(cobroMetodo === 'efectivo') abrirCajaRegistradora();
+  printTicketConPago(m.pedido, 'Mesa '+m.id, m.nota, total, lineas, vuelto);
   mesas[curMesa-1].pedido=[]; mesas[curMesa-1].nota='';
   renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
   localLastSave = Date.now(); saveToCloud();
 }
 
-function _ejecutarCobroLlevar() {
+function _ejecutarCobroLlevar(lineas, vuelto) {
   const o = ordenes[curOrden-1];
   const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
   const label = o.nota ? 'Orden '+curOrden+' ('+o.nota+')' : 'Orden '+curOrden;
   const venta = {
     id: Date.now(), hora: now(), origen: 'Llevar — '+label,
     nota: o.nota||'', items: o.pedido.map(x=>({...x})), total,
-    metodoPago: cobroMetodo
+    pagos: lineas, vuelto
   };
   ventas.push(venta);
   saveVentaHistorial(venta);
-  printTicketConPago('salon', o.pedido, 'Llevar — '+label, o.nota, total);
-  if(cobroMetodo === 'efectivo') abrirCajaRegistradora();
+  printTicketConPago(o.pedido, 'Llevar — '+label, o.nota, total, lineas, vuelto);
   ordenes[curOrden-1].pedido=[]; ordenes[curOrden-1].nota='';
   renderLlevarList(); renderOrdenesGrid(); renderOrdenStrip();
   localLastSave = Date.now(); saveToCloud();
 }
 
-function printTicketConPago(tipo, pedido, origen, nota, total) {
-  const recibido = cobroMetodo==='efectivo' ? (parseFloat(document.getElementById('cobro-recibido')?.value)||0) : 0;
-  const vuelto = cobroMetodo==='efectivo' ? recibido - total : 0;
-  const metodoLabel = cobroMetodo==='yape' ? 'Yape / Plin' : cobroMetodo==='tarjeta' ? 'Tarjeta' : 'Efectivo';
+function printTicketConPago(pedido, origen, nota, total, lineas, vuelto) {
+  const metodoLabels = { efectivo:'Efectivo', yape:'Yape/Plin', tarjeta:'Tarjeta' };
+  const pagoHtml = lineas.length === 1
+    ? `<div class="pago-row"><span>Pago:</span><span style="font-weight:700;">${metodoLabels[lineas[0].metodo]}</span></div>`
+    : lineas.map(l => `<div class="pago-row"><span>${metodoLabels[l.metodo]}:</span><span style="font-weight:700;">S/ ${l.monto.toFixed(2)}</span></div>`).join('');
+  const tieneEfectivo = lineas.some(l => l.metodo === 'efectivo');
+  const recibidoEfectivo = lineas.filter(l=>l.metodo==='efectivo').reduce((s,l)=>s+l.monto,0);
+
   const html = `<style>
     @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.5}
@@ -2176,9 +2250,9 @@ function printTicketConPago(tipo, pedido, origen, nota, total) {
     .rn{flex:1;font-size:18px;font-weight:700}.rp{white-space:nowrap;font-size:18px;font-weight:700}
     .sub{font-size:11px;color:#999;padding-left:8px;margin-bottom:3px}
     .tot{display:flex;justify-content:space-between;font-size:24px;font-weight:900;margin-top:4px}
-    .nota{font-size:13px;font-weight:600}
     .pago-row{display:flex;justify-content:space-between;font-size:14px;margin:3px 0}
     .vuelto-row{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin:4px 0}
+    .nota{font-size:13px;font-weight:600}
   </style>
   <div class="c" style="font-size:16px;font-weight:900;">CHIFA SUKI</div>
   <div class="c hd">Cocina Oriental · 912 366 079</div>
@@ -2190,8 +2264,9 @@ function printTicketConPago(tipo, pedido, origen, nota, total) {
   <div class="sep2"></div>
   <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
   <div class="sep"></div>
-  <div class="pago-row"><span>Pago:</span><span style="font-weight:700;">${metodoLabel}</span></div>
-  ${cobroMetodo==='efectivo' && recibido>0 ? `<div class="pago-row"><span>Recibido:</span><span style="font-weight:700;">S/ ${recibido.toFixed(2)}</span></div><div class="vuelto-row"><span>VUELTO:</span><span>S/ ${vuelto.toFixed(2)}</span></div>` : ''}
+  ${pagoHtml}
+  ${tieneEfectivo && vuelto > 0.009 ? `<div class="vuelto-row"><span>VUELTO:</span><span>S/ ${vuelto.toFixed(2)}</span></div>` : ''}
+  ${tieneEfectivo && Math.abs(vuelto) < 0.01 ? `<div class="pago-row" style="color:#2e7d32;font-weight:700;"><span>Pago exacto</span><span>✓</span></div>` : ''}
   <div class="sep"></div>
   <div class="c hd">Gracias por su visita · chifa.suki</div><br>`;
 
