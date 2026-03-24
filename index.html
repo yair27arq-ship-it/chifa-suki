@@ -620,6 +620,7 @@ let curOrden = 1;
 let curTab = 0;
 let curTabLlevar = 0;
 let curCat = 0;
+let curCatBebidas = 0;
 let pendingItem = null;
 let menuEntSel = {};
 let isLlevarMode = false; // saber si el add-item va a mesa o a llevar
@@ -728,7 +729,7 @@ function switchOrden(n) {
 }
 
 function switchTabLlevar(i, btn) {
-  curTabLlevar = i; curCat = 0;
+  curTabLlevar = i; curCat = 0; curCatBebidas = 0;
   document.querySelectorAll('#scr-llevar .mtab').forEach(x=>x.classList.remove('active'));
   btn.classList.add('active');
   renderTabContentLlevar();
@@ -961,7 +962,7 @@ function switchMesa(n) {
 }
 
 function switchTab(i, btn) {
-  curTab = i; curCat = 0;
+  curTab = i; curCat = 0; curCatBebidas = 0;
   document.querySelectorAll('.mtab').forEach(x=>x.classList.remove('active'));
   btn.classList.add('active');
   renderTabContent();
@@ -1076,6 +1077,12 @@ function selectCat(i) {
   else renderTabContent();
 }
 
+function selectCatBebidas(i) {
+  curCatBebidas = i;
+  if(isLlevarMode) renderTabContentLlevar();
+  else renderTabContent();
+}
+
 function addCartaItem(ci,ii) {
   const item = CARTA[ci].items[ii];
   // Wantan frito → modal de cantidad libre
@@ -1092,8 +1099,8 @@ function addCartaItem(ci,ii) {
 
 // ── TAB 2: BEBIDAS ──
 function renderBebidasTab(el) {
-  const catBar = `<div class="cat-bar">${BEBIDAS.map((c,i)=>`<button class="ctab ${i===curCat?'active':''}" onclick="selectCat(${i})">${c.cat}</button>`).join('')}</div>`;
-  const cat = BEBIDAS[curCat];
+  const catBar = `<div class="cat-bar">${BEBIDAS.map((c,i)=>`<button class="ctab ${i===curCatBebidas?'active':''}" onclick="selectCatBebidas(${i})">${c.cat}</button>`).join('')}</div>`;
+  const cat = BEBIDAS[curCatBebidas];
   const items = `<div class="menu-scroll"><div class="menu-items"><div class="sec-title">${cat.cat}</div>`+
     cat.items.map((item,i)=>{
       const multi = item.sizes.length>1;
@@ -1103,7 +1110,7 @@ function renderBebidasTab(el) {
           ${multi?`<div class="mrow-sub">${item.sizes.map(s=>s.l+' S/'+s.p).join(' · ')}</div>`:''}
         </div>
         <span class="mrow-price">${multi?'S/'+item.sizes[0].p+'–S/'+item.sizes[item.sizes.length-1].p:'S/'+item.sizes[0].p}</span>
-        <button class="add-btn" onclick="addBebida(${curCat},${i})">+</button>
+        <button class="add-btn" onclick="addBebida(${curCatBebidas},${i})">+</button>
       </div>`;
     }).join('')+'</div></div>';
   el.innerHTML = catBar + items;
