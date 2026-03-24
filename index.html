@@ -891,36 +891,39 @@ function printTicketLlevar(tipo) {
   if(tipo==='salon') {
     html = `<style>
       @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
-      .c{text-align:center}.sep{border-top:1px dashed #000;margin:3px 0}.sep2{border-top:1.5px solid #000;margin:3px 0}
-      .hd{font-size:10px;color:#888}.mesa{font-size:13px;font-weight:700;color:#333}
-      .row{display:flex;justify-content:space-between;gap:4px;margin:4px 0;align-items:baseline}
-      .rn{flex:1;font-size:16px;font-weight:700}.rp{white-space:nowrap;font-size:16px;font-weight:700}
-      .sub{font-size:10px;color:#999;padding-left:6px;margin-bottom:2px}
-      .tot{display:flex;justify-content:space-between;font-size:20px;font-weight:900;margin-top:3px}
-      .nota{font-size:12px;font-weight:600}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.6}
+      .c{text-align:center}.sep{border-top:1px dashed #000;margin:5px 0}.sep2{border-top:2.5px solid #000;margin:5px 0}
+      .hd{font-size:12px;color:#888}.mesa{font-size:16px;font-weight:700;color:#333}
+      .row{display:flex;justify-content:space-between;gap:4px;margin:7px 0;align-items:baseline}
+      .rn{flex:1;font-size:21px;font-weight:800}.rp{white-space:nowrap;font-size:21px;font-weight:800}
+      .sub{font-size:12px;color:#999;padding-left:8px;margin-bottom:4px}
+      .tot{display:flex;justify-content:space-between;font-size:27px;font-weight:900;margin-top:5px}
+      .nota{font-size:14px;font-weight:700}
+      .pago-row{display:flex;justify-content:space-between;font-size:15px;margin:4px 0}
+      .vuelto-row{display:flex;justify-content:space-between;font-size:20px;font-weight:800;margin:5px 0}
     </style>
-    <div class="c hd">CHIFA SUKI · 912 366 079</div>
+    <div class="c" style="font-size:16px;font-weight:900;letter-spacing:.04em;">CHIFA SUKI</div>
+    <div class="c hd">Cocina Oriental · 912 366 079</div>
     <div class="sep2"></div>
-    <div class="mesa">Llevar — Ord ${curOrden} &nbsp;<span style="font-weight:400;font-size:11px;color:#888">${now()}</span></div>
+    <div class="mesa">Llevar — Ord ${curOrden} &nbsp;<span style="font-weight:400;font-size:12px;color:#888">${now()}</span></div>
     ${o.nota?`<div class="nota">Cliente: ${o.nota}</div>`:''}
     <div class="sep"></div>
     ${o.pedido.map(x=>`<div class="row"><span class="rn">${x.qty}x ${x.name}</span><span class="rp">S/${(x.precio*x.qty).toFixed(2)}</span></div><div class="sub">@ S/${x.precio.toFixed(2)} c/u</div>`).join('')}
     <div class="sep2"></div>
     <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
     <div class="sep"></div>
-    <div class="c hd">Gracias · chifa.suki</div><br>`;
+    <div class="c hd">Gracias por su visita · chifa.suki</div><br>`;
   } else {
     html = `<style>
       @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
-      .c{text-align:center}.sep{border-top:1.5px solid #000;margin:4px 0}.sep2{border-top:1px dashed #000;margin:3px 0}
-      .hd{font-size:10px;color:#888}.mesa{font-size:18px;font-weight:900}
-      .irow{display:flex;align-items:baseline;gap:6px;padding:5px 0;border-bottom:1px dotted #bbb}
-      .iq{font-size:16px;font-weight:700;min-width:22px}
-      .in{font-size:16px;font-weight:700;flex:1;line-height:1.3}
-      .ip{font-size:14px;font-weight:600;color:#444;white-space:nowrap}
-      .nota{font-size:13px;font-weight:700}.bev{font-size:11px;color:#555}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.6}
+      .c{text-align:center}.sep{border-top:2px solid #000;margin:5px 0}.sep2{border-top:1px dashed #000;margin:4px 0}
+      .hd{font-size:12px;color:#888}.mesa{font-size:22px;font-weight:900}
+      .irow{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-bottom:1.5px dotted #bbb}
+      .iq{font-size:22px;font-weight:900;min-width:28px}
+      .in{font-size:21px;font-weight:800;flex:1;line-height:1.3}
+      .ip{font-size:16px;font-weight:700;color:#444;white-space:nowrap}
+      .nota{font-size:15px;font-weight:900}.bev{font-size:14px;color:#444;padding:3px 0}
     </style>
     <div class="c hd">--- COCINA ---</div>
     <div class="c mesa">LLEVAR — Ord ${curOrden}</div>
@@ -928,8 +931,7 @@ function printTicketLlevar(tipo) {
     ${o.nota?`<div class="nota">Cliente: ${o.nota}</div>`:''}
     <div class="sep"></div>
     ${cocina.map(x=>`<div class="irow"><span class="iq">${x.qty}</span><span class="in">${x.name}</span><span class="ip">S/${x.precio.toFixed(2)}</span></div>`).join('')}
-    ${resto.length?`<div class="sep2"></div><div class="hd">BEBIDAS/EXTRAS:</div>${resto.map(x=>`<div class="bev">${x.qty}x ${x.name}</div>`).join('')}`:''}
-    <br>`;
+    ${resto.length?`<div class="sep2"></div><div class="hd">BEBIDAS/EXTRAS:</div>${resto.map(x=>`<div class="bev">${x.qty}x ${x.name}</div>`).join('')}`:''}<br>`;
   }
   const win = window.open('','_blank','width=400,height=600');
   if(win) { win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket Llevar</title></head><body>'+html+'</body></html>'); win.document.close(); win.onload=()=>{win.focus();win.print();}; }
@@ -1362,18 +1364,21 @@ function reimprimirVenta(vi) {
   const total = v.total;
   const html = `<style>
     @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
-    .c{text-align:center}.sep{border-top:1px dashed #000;margin:3px 0}.sep2{border-top:1.5px solid #000;margin:3px 0}
-    .hd{font-size:10px;color:#888}.mesa{font-size:13px;font-weight:700;color:#333}
-    .row{display:flex;justify-content:space-between;gap:4px;margin:4px 0;align-items:baseline}
-    .rn{flex:1;font-size:16px;font-weight:700}.rp{white-space:nowrap;font-size:16px;font-weight:700}
-    .sub{font-size:10px;color:#999;padding-left:6px;margin-bottom:2px}
-    .tot{display:flex;justify-content:space-between;font-size:20px;font-weight:900;margin-top:3px}
-    .nota{font-size:12px;font-weight:600}
+    body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.6}
+    .c{text-align:center}.sep{border-top:1px dashed #000;margin:5px 0}.sep2{border-top:2.5px solid #000;margin:5px 0}
+    .hd{font-size:12px;color:#888}.mesa{font-size:16px;font-weight:700;color:#333}
+    .row{display:flex;justify-content:space-between;gap:4px;margin:7px 0;align-items:baseline}
+    .rn{flex:1;font-size:21px;font-weight:800}.rp{white-space:nowrap;font-size:21px;font-weight:800}
+    .sub{font-size:12px;color:#999;padding-left:8px;margin-bottom:4px}
+    .tot{display:flex;justify-content:space-between;font-size:27px;font-weight:900;margin-top:5px}
+    .nota{font-size:14px;font-weight:700}
+    .pago-row{display:flex;justify-content:space-between;font-size:15px;margin:4px 0}
+    .vuelto-row{display:flex;justify-content:space-between;font-size:20px;font-weight:800;margin:5px 0}
   </style>
-  <div class="c hd">CHIFA SUKI · 912 366 079</div>
+  <div class="c" style="font-size:16px;font-weight:900;letter-spacing:.04em;">CHIFA SUKI</div>
+  <div class="c hd">Cocina Oriental · 912 366 079</div>
   <div class="sep2"></div>
-  <div class="mesa">${v.origen} &nbsp;<span style="font-weight:400;font-size:11px;color:#888">${v.hora}</span></div>
+  <div class="mesa">${v.origen} &nbsp;<span style="font-weight:400;font-size:12px;color:#888">${v.hora}</span></div>
   ${v.nota?`<div class="nota">${v.nota}</div>`:''}
   <div class="hd" style="font-style:italic">★ reimpresión ★</div>
   <div class="sep"></div>
@@ -1381,7 +1386,7 @@ function reimprimirVenta(vi) {
   <div class="sep2"></div>
   <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
   <div class="sep"></div>
-  <div class="c hd">Gracias · chifa.suki</div><br>`;
+  <div class="c hd">Gracias por su visita · chifa.suki</div><br>`;
 
   const win = window.open('','_blank','width=400,height=600');
   if(win) {
@@ -1512,24 +1517,22 @@ function printTicket(tipo) {
     // ── TICKET SALÓN ──
     html = `
     <style>
-      @page{size:80mm auto;margin:0}
-      *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
-      .c{text-align:center}
-      .sep{border-top:1px dashed #000;margin:3px 0}
-      .sep2{border-top:1.5px solid #000;margin:3px 0}
-      .hd{font-size:10px;color:#888}
-      .mesa{font-size:13px;font-weight:700;color:#333}
-      .row{display:flex;justify-content:space-between;gap:4px;margin:4px 0;align-items:baseline}
-      .rn{flex:1;font-size:16px;font-weight:700}
-      .rp{white-space:nowrap;font-size:16px;font-weight:700}
-      .sub{font-size:10px;color:#999;padding-left:6px;margin-bottom:2px}
-      .tot{display:flex;justify-content:space-between;font-size:20px;font-weight:900;margin-top:3px}
-      .nota{font-size:12px;font-weight:600}
+      @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.6}
+      .c{text-align:center}.sep{border-top:1px dashed #000;margin:5px 0}.sep2{border-top:2.5px solid #000;margin:5px 0}
+      .hd{font-size:12px;color:#888}.mesa{font-size:16px;font-weight:700;color:#333}
+      .row{display:flex;justify-content:space-between;gap:4px;margin:7px 0;align-items:baseline}
+      .rn{flex:1;font-size:21px;font-weight:800}.rp{white-space:nowrap;font-size:21px;font-weight:800}
+      .sub{font-size:12px;color:#999;padding-left:8px;margin-bottom:4px}
+      .tot{display:flex;justify-content:space-between;font-size:27px;font-weight:900;margin-top:5px}
+      .nota{font-size:14px;font-weight:700}
+      .pago-row{display:flex;justify-content:space-between;font-size:15px;margin:4px 0}
+      .vuelto-row{display:flex;justify-content:space-between;font-size:20px;font-weight:800;margin:5px 0}
     </style>
-    <div class="c hd">CHIFA SUKI · 912 366 079</div>
+    <div class="c" style="font-size:16px;font-weight:900;letter-spacing:.04em;">CHIFA SUKI</div>
+    <div class="c hd">Cocina Oriental · 912 366 079</div>
     <div class="sep2"></div>
-    <div class="mesa">Mesa ${m.id} &nbsp;<span style="font-weight:400;font-size:11px;color:#888">${now()}</span></div>
+    <div class="mesa">Mesa ${m.id} &nbsp;<span style="font-weight:400;font-size:12px;color:#888">${now()}</span></div>
     <div class="sep"></div>
     ${m.pedido.map(x=>`
       <div class="row"><span class="rn">${x.qty}x ${x.name}</span><span class="rp">S/${(x.precio*x.qty).toFixed(2)}</span></div>
@@ -1539,27 +1542,22 @@ function printTicket(tipo) {
     <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
     ${m.nota?`<div class="sep"></div><div class="nota">Nota: ${m.nota}</div>`:''}
     <div class="sep"></div>
-    <div class="c hd">Gracias · chifa.suki</div>
+    <div class="c hd">Gracias por su visita · chifa.suki</div>
     <br>`;
 
   } else {
     // ── TICKET COCINA ──
     html = `
     <style>
-      @page{size:80mm auto;margin:0}
-      *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:3mm 4mm;line-height:1.4}
-      .c{text-align:center}
-      .sep{border-top:1.5px solid #000;margin:4px 0}
-      .sep2{border-top:1px dashed #000;margin:3px 0}
-      .hd{font-size:10px;color:#888}
-      .mesa{font-size:18px;font-weight:900}
-      .irow{display:flex;align-items:baseline;gap:6px;padding:5px 0;border-bottom:1px dotted #bbb}
-      .iq{font-size:16px;font-weight:700;min-width:22px}
-      .in{font-size:16px;font-weight:700;flex:1;line-height:1.3}
-      .ip{font-size:14px;font-weight:600;color:#444;white-space:nowrap}
-      .nota{font-size:13px;font-weight:700}
-      .bev{font-size:11px;color:#555}
+      @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.6}
+      .c{text-align:center}.sep{border-top:2px solid #000;margin:5px 0}.sep2{border-top:1px dashed #000;margin:4px 0}
+      .hd{font-size:12px;color:#888}.mesa{font-size:22px;font-weight:900}
+      .irow{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-bottom:1.5px dotted #bbb}
+      .iq{font-size:22px;font-weight:900;min-width:28px}
+      .in{font-size:21px;font-weight:800;flex:1;line-height:1.3}
+      .ip{font-size:16px;font-weight:700;color:#444;white-space:nowrap}
+      .nota{font-size:15px;font-weight:900}.bev{font-size:14px;color:#444;padding:3px 0}
     </style>
     <div class="c hd">--- COCINA ---</div>
     <div class="c mesa">MESA ${m.id}</div>
@@ -1573,8 +1571,7 @@ function printTicket(tipo) {
       </div>
     `).join('') : '<div class="hd">Sin platos</div>'}
     ${m.nota?`<div class="sep"></div><div class="nota">⚠ ${m.nota}</div>`:''}
-    ${resto.length?`<div class="sep2"></div><div class="hd">BEBIDAS/EXTRAS:</div>${resto.map(x=>`<div class="bev">${x.qty}x ${x.name}</div>`).join('')}`:''}
-    <br>`;
+    ${resto.length?`<div class="sep2"></div><div class="hd">BEBIDAS/EXTRAS:</div>${resto.map(x=>`<div class="bev">${x.qty}x ${x.name}</div>`).join('')}`:''}<br>`;
   }
 
   // Abrir ventana de impresión
@@ -2243,16 +2240,16 @@ function printTicketConPago(pedido, origen, nota, total, lineas, vuelto) {
 
   const html = `<style>
     @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.5}
-    .c{text-align:center}.sep{border-top:1px dashed #000;margin:4px 0}.sep2{border-top:2px solid #000;margin:4px 0}
-    .hd{font-size:11px;color:#888}.mesa{font-size:15px;font-weight:700;color:#333}
-    .row{display:flex;justify-content:space-between;gap:4px;margin:5px 0;align-items:baseline}
-    .rn{flex:1;font-size:18px;font-weight:700}.rp{white-space:nowrap;font-size:18px;font-weight:700}
-    .sub{font-size:11px;color:#999;padding-left:8px;margin-bottom:3px}
-    .tot{display:flex;justify-content:space-between;font-size:24px;font-weight:900;margin-top:4px}
-    .pago-row{display:flex;justify-content:space-between;font-size:14px;margin:3px 0}
-    .vuelto-row{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin:4px 0}
-    .nota{font-size:13px;font-weight:600}
+    body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.6}
+    .c{text-align:center}.sep{border-top:1px dashed #000;margin:5px 0}.sep2{border-top:2.5px solid #000;margin:5px 0}
+    .hd{font-size:12px;color:#888}.mesa{font-size:16px;font-weight:700;color:#333}
+    .row{display:flex;justify-content:space-between;gap:4px;margin:7px 0;align-items:baseline}
+    .rn{flex:1;font-size:21px;font-weight:800}.rp{white-space:nowrap;font-size:21px;font-weight:800}
+    .sub{font-size:12px;color:#999;padding-left:8px;margin-bottom:4px}
+    .tot{display:flex;justify-content:space-between;font-size:27px;font-weight:900;margin-top:5px}
+    .nota{font-size:14px;font-weight:700}
+    .pago-row{display:flex;justify-content:space-between;font-size:15px;margin:4px 0}
+    .vuelto-row{display:flex;justify-content:space-between;font-size:20px;font-weight:800;margin:5px 0}
   </style>
   <div class="c" style="font-size:16px;font-weight:900;">CHIFA SUKI</div>
   <div class="c hd">Cocina Oriental · 912 366 079</div>
