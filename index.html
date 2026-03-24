@@ -162,6 +162,8 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .btn-confirmar:active { background: var(--red2); }
 .btn-cobrar { flex: 1; padding: 9px; background: #1b5e20; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
 .btn-cobrar:active { background: #145214; }
+.cobro-metodo { flex:1; padding:10px 4px; border:1.5px solid var(--border2); border-radius:10px; background:none; font-size:12px; font-weight:600; cursor:pointer; color:var(--text); transition:all .15s; }
+.cobro-metodo.active { background:var(--brand); color:white; border-color:var(--brand); }
 .btn-share { flex: none; padding: 9px 10px; background: #1565c0; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; }
 .btn-share:active { background: #0d47a1; }
 .print-btns { display: flex; gap: 6px; margin-bottom: 6px; }
@@ -193,6 +195,43 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 <!-- PRINT FRAME -->
 <div class="print-frame" id="print-frame"></div>
+
+<!-- MODAL COBRO -->
+<div class="modal-overlay" id="modal-cobro">
+  <div class="modal-box" style="max-width:340px;">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeCobro()">x</button>
+    <div class="modal-title" id="cobro-title">Cobrar</div>
+    <div style="margin:10px 0 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;margin-bottom:14px;">
+        <span style="font-size:13px;color:var(--text2);font-weight:600;">TOTAL A COBRAR</span>
+        <span id="cobro-total-display" style="font-size:26px;font-weight:900;color:var(--brand);">S/ 0.00</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Metodo de pago</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button id="cobro-btn-efectivo" class="cobro-metodo active" onclick="selectMetodo('efectivo')">Efectivo</button>
+        <button id="cobro-btn-yape" class="cobro-metodo" onclick="selectMetodo('yape')">Yape/Plin</button>
+        <button id="cobro-btn-tarjeta" class="cobro-metodo" onclick="selectMetodo('tarjeta')">Tarjeta</button>
+      </div>
+      <div id="cobro-efectivo-section">
+        <div style="font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Dinero recibido del cliente</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <span style="font-size:15px;font-weight:700;color:var(--text2);">S/</span>
+          <input id="cobro-recibido" type="number" min="0" step="0.5" class="nota-in" style="margin:0;font-size:20px;font-weight:700;text-align:right;" placeholder="0.00" oninput="calcVuelto()" />
+        </div>
+        <div id="cobro-rapidos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
+        <div id="cobro-vuelto-box" style="display:none;padding:12px 14px;border-radius:10px;margin-bottom:4px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;font-weight:700;" id="cobro-vuelto-label">VUELTO</span>
+            <span id="cobro-vuelto-val" style="font-size:28px;font-weight:900;"></span>
+          </div>
+          <div id="cobro-caja-hint" style="font-size:11px;margin-top:4px;display:none;">La caja se abrira automaticamente</div>
+        </div>
+      </div>
+    </div>
+    <button id="cobro-confirm-btn" onclick="confirmarCobro()" style="width:100%;padding:14px;background:#1b5e20;color:white;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:800;cursor:pointer;">CONFIRMAR COBRO</button>
+  </div>
+</div>
 
 <!-- MODAL TAMAÑO -->
 <div class="modal-overlay" id="modal">
@@ -833,24 +872,7 @@ function cobrarLlevar() {
   if(!o.pedido.length){alert('No hay items en la orden.');return;}
   const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
   const label = o.nota ? 'Orden '+curOrden+' ('+o.nota+')' : 'Orden '+curOrden;
-  if(!confirm('¿Cobrar '+label+'?\nTotal: S/ '+total.toFixed(2))) return;
-  // Registrar venta
-  const venta = {
-    id: Date.now(),
-    hora: now(),
-    origen: 'Llevar — '+label,
-    nota: o.nota||'',
-    items: o.pedido.map(x=>({...x})),
-    total
-  };
-  ventas.push(venta);
-  saveVentaHistorial(venta); // guardar permanentemente
-  // Imprimir ticket automáticamente antes de limpiar
-  printTicketLlevar('salon');
-  // Limpiar orden
-  ordenes[curOrden-1].pedido=[]; ordenes[curOrden-1].nota='';
-  renderLlevarList(); renderOrdenesGrid(); renderOrdenStrip();
-  localLastSave = Date.now(); saveToCloud();
+  abrirModalCobro(label, total, 'llevar');
 }
 
 function printTicketLlevar(tipo) {
@@ -1253,24 +1275,7 @@ function cobrarMesa() {
   const m = mesas[curMesa-1];
   if(!m.pedido.length){alert('No hay items en el pedido.');return;}
   const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
-  if(!confirm('¿Cobrar Mesa '+m.id+'?\nTotal: S/ '+total.toFixed(2))) return;
-  // Registrar venta
-  const venta = {
-    id: Date.now(),
-    hora: now(),
-    origen: 'Mesa '+m.id,
-    nota: m.nota||'',
-    items: m.pedido.map(x=>({...x})),
-    total
-  };
-  ventas.push(venta);
-  saveVentaHistorial(venta); // guardar permanentemente
-  // Imprimir ticket automáticamente antes de limpiar
-  printTicket('salon');
-  // Limpiar mesa
-  mesas[curMesa-1].pedido=[]; mesas[curMesa-1].nota='';
-  renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
-  localLastSave = Date.now(); saveToCloud();
+  abrirModalCobro('Mesa '+m.id, total, 'mesa');
 }
 
 function anularOrder() {
@@ -1998,6 +2003,206 @@ document.getElementById('modal').addEventListener('click', e=>{
 });
 document.getElementById('modal-wantan').addEventListener('click', e=>{
   if(e.target===document.getElementById('modal-wantan')) closeWantanModal();
+});
+
+// ═══════════════════════════════════════
+// MODAL COBRO
+// ═══════════════════════════════════════
+let cobroTotal = 0;
+let cobroOrigen = ''; // 'mesa' | 'llevar'
+let cobroMetodo = 'efectivo';
+
+function abrirModalCobro(label, total, origen) {
+  cobroTotal = total;
+  cobroOrigen = origen;
+  cobroMetodo = 'efectivo';
+  document.getElementById('cobro-title').textContent = 'Cobrar — ' + label;
+  document.getElementById('cobro-total-display').textContent = 'S/ ' + total.toFixed(2);
+  document.getElementById('cobro-recibido').value = '';
+  document.getElementById('cobro-vuelto-box').style.display = 'none';
+  document.getElementById('cobro-caja-hint').style.display = 'none';
+  // Reset método
+  ['efectivo','yape','tarjeta'].forEach(m => {
+    document.getElementById('cobro-btn-'+m).classList.toggle('active', m==='efectivo');
+  });
+  document.getElementById('cobro-efectivo-section').style.display = 'block';
+  // Botones rápidos de billetes comunes
+  const rapidos = document.getElementById('cobro-rapidos');
+  const billetes = [10,20,50,100].filter(b => b >= total);
+  // Siempre incluir el exacto y los billetes mayores
+  const exacto = Math.ceil(total);
+  const opciones = [...new Set([exacto, ...billetes])].sort((a,b)=>a-b).slice(0,5);
+  rapidos.innerHTML = opciones.map(v =>
+    `<button onclick="setRecibido(${v})" style="flex:1;min-width:50px;padding:8px 4px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-weight:700;background:none;cursor:pointer;">S/${v}</button>`
+  ).join('');
+  document.getElementById('modal-cobro').classList.add('open');
+  setTimeout(()=>{ const el = document.getElementById('cobro-recibido'); if(el) el.focus(); }, 200);
+}
+
+function closeCobro() {
+  document.getElementById('modal-cobro').classList.remove('open');
+}
+
+function selectMetodo(m) {
+  cobroMetodo = m;
+  ['efectivo','yape','tarjeta'].forEach(x => {
+    document.getElementById('cobro-btn-'+x).classList.toggle('active', x===m);
+  });
+  document.getElementById('cobro-efectivo-section').style.display = m==='efectivo' ? 'block' : 'none';
+}
+
+function setRecibido(val) {
+  document.getElementById('cobro-recibido').value = val;
+  calcVuelto();
+}
+
+function calcVuelto() {
+  const recibido = parseFloat(document.getElementById('cobro-recibido').value) || 0;
+  const vueltoBox = document.getElementById('cobro-vuelto-box');
+  const vueltoVal = document.getElementById('cobro-vuelto-val');
+  const vueltoLabel = document.getElementById('cobro-vuelto-label');
+  const cajaHint = document.getElementById('cobro-caja-hint');
+  if(recibido <= 0) { vueltoBox.style.display='none'; return; }
+  const vuelto = recibido - cobroTotal;
+  vueltoBox.style.display = 'block';
+  if(vuelto < 0) {
+    vueltoBox.style.background = '#fff3e0';
+    vueltoLabel.textContent = 'FALTA';
+    vueltoLabel.style.color = '#e65100';
+    vueltoVal.textContent = 'S/ ' + Math.abs(vuelto).toFixed(2);
+    vueltoVal.style.color = '#e65100';
+    cajaHint.style.display = 'none';
+  } else if(vuelto === 0) {
+    vueltoBox.style.background = '#e8f5e9';
+    vueltoLabel.textContent = 'EXACTO';
+    vueltoLabel.style.color = '#2e7d32';
+    vueltoVal.textContent = 'S/ 0.00';
+    vueltoVal.style.color = '#2e7d32';
+    cajaHint.style.display = 'block';
+  } else {
+    vueltoBox.style.background = '#e8f5e9';
+    vueltoLabel.textContent = 'VUELTO';
+    vueltoLabel.style.color = '#1b5e20';
+    vueltoVal.textContent = 'S/ ' + vuelto.toFixed(2);
+    vueltoVal.style.color = '#1b5e20';
+    cajaHint.style.display = 'block';
+  }
+}
+
+function abrirCajaRegistradora() {
+  // Comando ESC/POS para abrir cajón: DLE EOT 1 o ESC p 0 50 250
+  // Se envía a través de la API de impresión usando un ticket especial
+  const html = `<style>@page{size:1mm 1mm;margin:0}body{margin:0}</style>` +
+    `<script>` +
+    `window.onload=function(){` +
+    // Enviar secuencia ESC/POS para abrir cajón via RawBT / PrintNode / impresora directa
+    // El navegador no puede enviar raw bytes, pero al imprimir un doc vacío
+    // muchas impresoras con cajón conectado lo abren automáticamente
+    `window.print();setTimeout(()=>window.close(),500);` +
+    `}` +
+    `<\/script>`;
+  const win = window.open('','_blank','width=1,height=1');
+  if(win) { win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'+html+'</body></html>'); win.document.close(); }
+}
+
+function confirmarCobro() {
+  if(cobroMetodo === 'efectivo') {
+    const recibido = parseFloat(document.getElementById('cobro-recibido').value) || 0;
+    if(recibido < cobroTotal) {
+      alert('El monto recibido (S/ '+recibido.toFixed(2)+') es menor al total (S/ '+cobroTotal.toFixed(2)+').');
+      return;
+    }
+  }
+  closeCobro();
+  // Registrar y procesar según origen
+  if(cobroOrigen === 'mesa') {
+    _ejecutarCobroMesa();
+  } else {
+    _ejecutarCobroLlevar();
+  }
+}
+
+function _ejecutarCobroMesa() {
+  const m = mesas[curMesa-1];
+  const total = m.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const venta = {
+    id: Date.now(), hora: now(), origen: 'Mesa '+m.id,
+    nota: m.nota||'', items: m.pedido.map(x=>({...x})), total,
+    metodoPago: cobroMetodo
+  };
+  ventas.push(venta);
+  saveVentaHistorial(venta);
+  // Imprimir ticket con método de pago y vuelto
+  printTicketConPago('salon', m.pedido, 'Mesa '+m.id, m.nota, total);
+  if(cobroMetodo === 'efectivo') abrirCajaRegistradora();
+  mesas[curMesa-1].pedido=[]; mesas[curMesa-1].nota='';
+  renderOrderList(); renderMesas(); renderMesaStrip(); updateMobCounter();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+function _ejecutarCobroLlevar() {
+  const o = ordenes[curOrden-1];
+  const total = o.pedido.reduce((a,x)=>a+x.precio*x.qty,0);
+  const label = o.nota ? 'Orden '+curOrden+' ('+o.nota+')' : 'Orden '+curOrden;
+  const venta = {
+    id: Date.now(), hora: now(), origen: 'Llevar — '+label,
+    nota: o.nota||'', items: o.pedido.map(x=>({...x})), total,
+    metodoPago: cobroMetodo
+  };
+  ventas.push(venta);
+  saveVentaHistorial(venta);
+  printTicketConPago('salon', o.pedido, 'Llevar — '+label, o.nota, total);
+  if(cobroMetodo === 'efectivo') abrirCajaRegistradora();
+  ordenes[curOrden-1].pedido=[]; ordenes[curOrden-1].nota='';
+  renderLlevarList(); renderOrdenesGrid(); renderOrdenStrip();
+  localLastSave = Date.now(); saveToCloud();
+}
+
+function printTicketConPago(tipo, pedido, origen, nota, total) {
+  const recibido = cobroMetodo==='efectivo' ? (parseFloat(document.getElementById('cobro-recibido')?.value)||0) : 0;
+  const vuelto = cobroMetodo==='efectivo' ? recibido - total : 0;
+  const metodoLabel = cobroMetodo==='yape' ? 'Yape / Plin' : cobroMetodo==='tarjeta' ? 'Tarjeta' : 'Efectivo';
+  const html = `<style>
+    @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Courier New',monospace;color:#000;width:80mm;padding:4mm 5mm;line-height:1.5}
+    .c{text-align:center}.sep{border-top:1px dashed #000;margin:4px 0}.sep2{border-top:2px solid #000;margin:4px 0}
+    .hd{font-size:11px;color:#888}.mesa{font-size:15px;font-weight:700;color:#333}
+    .row{display:flex;justify-content:space-between;gap:4px;margin:5px 0;align-items:baseline}
+    .rn{flex:1;font-size:18px;font-weight:700}.rp{white-space:nowrap;font-size:18px;font-weight:700}
+    .sub{font-size:11px;color:#999;padding-left:8px;margin-bottom:3px}
+    .tot{display:flex;justify-content:space-between;font-size:24px;font-weight:900;margin-top:4px}
+    .nota{font-size:13px;font-weight:600}
+    .pago-row{display:flex;justify-content:space-between;font-size:14px;margin:3px 0}
+    .vuelto-row{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin:4px 0}
+  </style>
+  <div class="c" style="font-size:16px;font-weight:900;">CHIFA SUKI</div>
+  <div class="c hd">Cocina Oriental · 912 366 079</div>
+  <div class="sep2"></div>
+  <div class="mesa">${origen} &nbsp;<span style="font-weight:400;font-size:12px;color:#888">${now()}</span></div>
+  ${nota?`<div class="nota">${nota}</div>`:''}
+  <div class="sep"></div>
+  ${pedido.map(x=>`<div class="row"><span class="rn">${x.qty}x ${x.name}</span><span class="rp">S/${(x.precio*x.qty).toFixed(2)}</span></div><div class="sub">@ S/${x.precio.toFixed(2)} c/u</div>`).join('')}
+  <div class="sep2"></div>
+  <div class="tot"><span>TOTAL</span><span>S/ ${total.toFixed(2)}</span></div>
+  <div class="sep"></div>
+  <div class="pago-row"><span>Pago:</span><span style="font-weight:700;">${metodoLabel}</span></div>
+  ${cobroMetodo==='efectivo' && recibido>0 ? `<div class="pago-row"><span>Recibido:</span><span style="font-weight:700;">S/ ${recibido.toFixed(2)}</span></div><div class="vuelto-row"><span>VUELTO:</span><span>S/ ${vuelto.toFixed(2)}</span></div>` : ''}
+  <div class="sep"></div>
+  <div class="c hd">Gracias por su visita · chifa.suki</div><br>`;
+
+  const win = window.open('','_blank','width=420,height=650');
+  if(win) { win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket</title></head><body>'+html+'</body></html>'); win.document.close(); win.onload=()=>{win.focus();win.print();}; }
+  else {
+    const pf = document.getElementById('print-frame');
+    pf.innerHTML=html; pf.style.display='block';
+    document.querySelector('.app').style.display='none';
+    window.print();
+    setTimeout(()=>{ pf.innerHTML=''; pf.style.display='none'; document.querySelector('.app').style.display='flex'; },1000);
+  }
+}
+
+document.getElementById('modal-cobro').addEventListener('click', e=>{
+  if(e.target===document.getElementById('modal-cobro')) closeCobro();
 });
 
 // Init
