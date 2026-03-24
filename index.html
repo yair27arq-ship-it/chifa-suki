@@ -1139,6 +1139,12 @@ function renderExtrasTab(el) {
   el.style.cssText = 'display:flex;flex-direction:column;flex:1;overflow:hidden;';
 }
 
+function addExtra(i) {
+  const e = EXTRAS[i];
+  if(!e) return;
+  doAdd(e.name, e.price, 'Extra');
+}
+
 function addCustomItem() {
   const nameEl = document.getElementById('custom-item-name');
   const priceEl = document.getElementById('custom-item-price');
