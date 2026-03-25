@@ -569,10 +569,11 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
   <!-- RESUMEN -->
   <div class="screen" id="scr-resumen">
-    <div class="screen-header" style="display:flex;justify-content:space-between;align-items:center;">
-      <button onclick="showScreen('mesas')" style="font-size:20px;color:var(--brand);background:none;border:none;cursor:pointer;padding:0 8px 0 0;line-height:1;">←</button>
-      <span style="flex:1;">Resumen del día</span>
-      <button onclick="if(confirm('¿Cerrar el día y reiniciar todas las mesas?')){resetDia();}" style="font-size:11px;color:var(--brand);background:none;border:none;cursor:pointer;">Cerrar día</button>
+    <div class="screen-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <button onclick="showScreen('mesas')" style="font-size:20px;color:var(--brand);background:none;border:none;cursor:pointer;padding:0 4px 0 0;line-height:1;flex-shrink:0;">←</button>
+      <span style="flex:1;">Ventas del día</span>
+      <button onclick="compartirResumenHoy()" style="font-size:11px;font-weight:700;color:#1565c0;background:#e3f2fd;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;flex-shrink:0;">📤 Compartir</button>
+      <button onclick="resetDia()" style="font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-light);border:none;border-radius:6px;padding:5px 10px;cursor:pointer;flex-shrink:0;">Cerrar día</button>
     </div>
     <div id="resumen-content"></div>
   </div>
@@ -1748,14 +1749,74 @@ function tarjetasTotalesPagos(totales) {
 }
 
 // ═══════════════════════════════════════
-// RESUMEN
+// RESUMEN — TURNOS + COMPARTIR
 // ═══════════════════════════════════════
+
+// Turno mañana: 11:00–16:59 | Turno noche: 17:00–23:59 + 00:00–10:59
+function getTurno(hora) {
+  // hora formato "HH:MM" o "HH:MM:SS"
+  const h = parseInt((hora||'00:00').split(':')[0], 10);
+  return (h >= 11 && h < 17) ? 'mañana' : 'noche';
+}
+
 function eliminarVentaDia(vi) {
   if(!confirm('¿Eliminar esta venta del resumen del día?\nEsta acción no se puede deshacer.')) return;
   ventas.splice(vi, 1);
   localLastSave = Date.now();
   saveToCloud();
   renderResumen();
+}
+
+function htmlVentaCard(v, vi) {
+  return `<div class="res-section" style="border-left:3px solid #2e7d32;margin-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
+      <div style="flex:1;min-width:0;margin-right:8px;">
+        <span style="font-size:13px;font-weight:700;color:var(--text);">${v.origen}</span>
+        ${v.nota?`<span style="font-size:11px;color:var(--text2);margin-left:5px;">· ${v.nota}</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <span style="font-size:14px;font-weight:800;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
+        <button onclick="eliminarVentaDia(${vi})" title="Eliminar"
+          style="width:26px;height:26px;border-radius:50%;background:#ffebee;border:1px solid #ef9a9a;color:#c62828;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">×</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:5px;">${v.hora}</div>
+    <div style="margin-bottom:6px;">${badgesPagos(v)}</div>
+    ${v.items.map(x=>`<div class="res-item" style="font-size:11px;"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
+      <button onclick="editarVenta(${vi})" style="flex:1;padding:6px;background:#fff3e0;color:#e65100;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✏️ Editar</button>
+      <button onclick="reimprimirVenta(${vi})" style="flex:1;padding:6px;background:#e3f2fd;color:#1565c0;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🖨 Reimprimir</button>
+      <button onclick="compartirVenta(${vi})" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">📤</button>
+    </div>
+  </div>`;
+}
+
+function htmlTurnoBloque(lista, titulo, icono, colorBg, colorText, colorBorder) {
+  if(!lista.length) return '';
+  const tot = lista.reduce((a,v)=>a+v.total,0);
+  const totP = calcTotalesPagos(lista);
+  let html = `
+  <div style="margin:0 0 4px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px 6px;">
+      <div style="display:flex;align-items:center;gap:7px;">
+        <span style="font-size:16px;">${icono}</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:${colorText};text-transform:uppercase;letter-spacing:.05em;">${titulo}</div>
+          <div style="font-size:10px;color:var(--text3);">${lista.length} venta(s)</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:18px;font-weight:800;color:${colorText};">S/ ${tot.toFixed(2)}</div>
+      </div>
+    </div>
+    <div style="margin:0 12px 8px;background:${colorBg};border:1px solid ${colorBorder};border-radius:var(--radius);padding:10px 12px;">
+      ${tarjetasTotalesPagos(totP)}
+    </div>
+  </div>`;
+  lista.forEach((v, li) => {
+    html += htmlVentaCard(v, v.__vi);
+  });
+  return html;
 }
 
 function renderResumen() {
@@ -1765,28 +1826,36 @@ function renderResumen() {
   const totalVentas = ventas.reduce((a,v)=>a+v.total,0);
   const totalActivo = [...occ.map(m=>m.pedido.reduce((a,x)=>a+x.precio*x.qty,0)),
                        ...occOrdenes.map(o=>o.pedido.reduce((a,x)=>a+x.precio*x.qty,0))].reduce((a,b)=>a+b,0);
-  const totPagos = calcTotalesPagos(ventas);
+  const totPagosTotal = calcTotalesPagos(ventas);
+
+  // Separar por turnos (guardar índice real para editar/eliminar)
+  const vManana = [], vNoche = [];
+  ventas.forEach((v, vi) => {
+    const vCopy = Object.assign({}, v, {__vi: vi});
+    if(getTurno(v.hora) === 'mañana') vManana.push(vCopy);
+    else vNoche.push(vCopy);
+  });
 
   let html = '<div style="height:10px;"></div>';
 
-  // ── TARJETAS RESUMEN GLOBAL ──
-  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 10px;">
-    <div style="background:#e8f5e9;border-radius:var(--radius);padding:12px;text-align:center;">
-      <div style="font-size:10px;color:#2e7d32;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cobrado hoy</div>
-      <div style="font-size:22px;font-weight:700;color:#2e7d32;margin-top:4px;">S/ ${totalVentas.toFixed(2)}</div>
-      <div style="font-size:11px;color:#388e3c;margin-top:2px;">${ventas.length} venta(s)</div>
-    </div>
-    <div style="background:var(--brand-light);border-radius:var(--radius);padding:12px;text-align:center;">
-      <div style="font-size:10px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">En mesa / activo</div>
-      <div style="font-size:22px;font-weight:700;color:var(--brand);margin-top:4px;">S/ ${totalActivo.toFixed(2)}</div>
-      <div style="font-size:11px;color:var(--brand);margin-top:2px;">${occ.length+occOrdenes.length} pedido(s)</div>
-    </div>
-  </div>`;
+  // ── RESUMEN GLOBAL ──
+  html += `<div style="padding:0 12px 10px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div style="background:#e8f5e9;border-radius:var(--radius);padding:12px;text-align:center;">
+        <div style="font-size:10px;color:#2e7d32;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cobrado hoy</div>
+        <div style="font-size:22px;font-weight:700;color:#2e7d32;margin-top:4px;">S/ ${totalVentas.toFixed(2)}</div>
+        <div style="font-size:11px;color:#388e3c;margin-top:2px;">${ventas.length} venta(s)</div>
+      </div>
+      <div style="background:var(--brand-light);border-radius:var(--radius);padding:12px;text-align:center;">
+        <div style="font-size:10px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">En mesa / activo</div>
+        <div style="font-size:22px;font-weight:700;color:var(--brand);margin-top:4px;">S/ ${totalActivo.toFixed(2)}</div>
+        <div style="font-size:11px;color:var(--brand);margin-top:2px;">${occ.length+occOrdenes.length} pedido(s)</div>
+      </div>
+    </div>`;
 
-  // ── DESGLOSE POR MÉTODO DE PAGO ──
   if(ventas.length) {
-    html += `<div style="margin:0 12px 12px;background:#fff8e1;border-radius:var(--radius);padding:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+    html += `<div style="background:#fff8e1;border-radius:var(--radius);padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div>
           <div style="font-size:10px;color:#f57f17;font-weight:700;text-transform:uppercase;">Total cobrado</div>
           <div style="font-size:26px;font-weight:800;color:#e65100;">S/ ${totalVentas.toFixed(2)}</div>
@@ -1796,17 +1865,10 @@ function renderResumen() {
           <div>${occ.length+occOrdenes.length} pendiente(s)</div>
         </div>
       </div>
-      ${tarjetasTotalesPagos(totPagos)}
-    </div>`;
-  } else {
-    html += `<div style="margin:0 12px 12px;background:#fff8e1;border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div style="font-size:10px;color:#f57f17;font-weight:700;text-transform:uppercase;">Total del día</div>
-        <div style="font-size:26px;font-weight:700;color:#e65100;">S/ ${totalActivo.toFixed(2)}</div>
-      </div>
-      <div style="font-size:11px;color:var(--text2);">${occ.length+occOrdenes.length} pendiente(s)</div>
+      ${tarjetasTotalesPagos(totPagosTotal)}
     </div>`;
   }
+  html += `</div>`;
 
   // ── PEDIDOS ACTIVOS ──
   if(occ.length || occOrdenes.length) {
@@ -1838,39 +1900,84 @@ function renderResumen() {
     });
   }
 
-  // ── COBROS DEL DÍA ──
+  // ── VENTAS POR TURNO ──
   if(ventas.length) {
-    html += `<div style="padding:12px 12px 6px;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">Cobros del día</div>`;
-    [...ventas].reverse().forEach((v,ri)=>{
-      const vi = ventas.length - 1 - ri;
-      html += `<div class="res-section" style="border-left:3px solid #2e7d32;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
-          <div style="flex:1;min-width:0;margin-right:8px;">
-            <span style="font-size:13px;font-weight:700;color:var(--text);">${v.origen}</span>
-            ${v.nota?`<span style="font-size:11px;color:var(--text2);margin-left:5px;">· ${v.nota}</span>`:''}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-            <span style="font-size:14px;font-weight:800;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
-            <button onclick="eliminarVentaDia(${vi})" title="Eliminar venta"
-              style="width:26px;height:26px;border-radius:50%;background:#ffebee;border:1px solid #ef9a9a;color:#c62828;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">×</button>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:5px;">${v.hora}</div>
-        <div style="margin-bottom:6px;">${badgesPagos(v)}</div>
-        ${v.items.map(x=>`<div class="res-item" style="font-size:11px;"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
-        <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
-          <button onclick="editarVenta(${vi})" style="flex:1;padding:6px;background:#fff3e0;color:#e65100;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✏️ Editar</button>
-          <button onclick="reimprimirVenta(${vi})" style="flex:1;padding:6px;background:#e3f2fd;color:#1565c0;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🖨 Reimprimir</button>
-          <button onclick="compartirVenta(${vi})" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">📤</button>
-        </div>
-      </div>`;
-    });
+    html += `<div style="padding:10px 12px 4px;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;">Cobros del día por turno</div>`;
+    html += htmlTurnoBloque(vManana, 'Turno Mañana · 11am – 4pm', '🌤', '#fff8e1', '#e65100', '#ffe082');
+    html += htmlTurnoBloque(vNoche,  'Turno Noche · 5pm – 12am',  '🌙', '#ede7f6', '#4527a0', '#b39ddb');
+    if(!vManana.length && !vNoche.length) {
+      html += `<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">Sin cobros registrados aún.</div>`;
+    }
   } else if(!occ.length && !occOrdenes.length) {
     html += `<div style="padding:24px 16px;text-align:center;color:var(--text3);font-size:13px;">Sin ventas registradas hoy.</div>`;
   }
 
-  html += '<div style="height:20px;"></div>';
+  html += '<div style="height:24px;"></div>';
   el.innerHTML = html;
+}
+
+// ── COMPARTIR RESUMEN VENTAS DEL DÍA ──
+function compartirResumenHoy() {
+  if(!ventas.length) { alert('No hay ventas para compartir.'); return; }
+
+  const fecha = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const totalHoy = ventas.reduce((a,v)=>a+v.total,0);
+  const totP = calcTotalesPagos(ventas);
+
+  const vManana = ventas.filter(v=>getTurno(v.hora)==='mañana');
+  const vNoche  = ventas.filter(v=>getTurno(v.hora)==='noche');
+  const totM = calcTotalesPagos(vManana);
+  const totN = calcTotalesPagos(vNoche);
+
+  let txt = `🍜 *CHIFA SUKI — Ventas del ${fecha}*\n`;
+  txt += `${'━'.repeat(28)}\n\n`;
+
+  if(vManana.length) {
+    const sumM = vManana.reduce((a,v)=>a+v.total,0);
+    txt += `🌤 *TURNO MAÑANA* (11am–4pm) · ${vManana.length} venta(s)\n`;
+    vManana.forEach(v => {
+      const metStr = v.pagos&&v.pagos.length
+        ? v.pagos.filter(p=>p.monto>0).map(p=>`${p.metodo} S/${parseFloat(p.monto).toFixed(2)}`).join('+')
+        : 'efectivo';
+      txt += `  ${v.hora} ${v.origen} → S/${v.total.toFixed(2)} [${metStr}]\n`;
+    });
+    txt += `  Subtotal: *S/ ${sumM.toFixed(2)}*\n`;
+    if(totM.efectivo>0.005) txt += `  💵 Efectivo: S/${totM.efectivo.toFixed(2)}\n`;
+    if(totM.yape>0.005)     txt += `  📱 Yape: S/${totM.yape.toFixed(2)}\n`;
+    if(totM.tarjeta>0.005)  txt += `  💳 Tarjeta: S/${totM.tarjeta.toFixed(2)}\n`;
+    txt += '\n';
+  }
+
+  if(vNoche.length) {
+    const sumN = vNoche.reduce((a,v)=>a+v.total,0);
+    txt += `🌙 *TURNO NOCHE* (5pm–12am) · ${vNoche.length} venta(s)\n`;
+    vNoche.forEach(v => {
+      const metStr = v.pagos&&v.pagos.length
+        ? v.pagos.filter(p=>p.monto>0).map(p=>`${p.metodo} S/${parseFloat(p.monto).toFixed(2)}`).join('+')
+        : 'efectivo';
+      txt += `  ${v.hora} ${v.origen} → S/${v.total.toFixed(2)} [${metStr}]\n`;
+    });
+    txt += `  Subtotal: *S/ ${sumN.toFixed(2)}*\n`;
+    if(totN.efectivo>0.005) txt += `  💵 Efectivo: S/${totN.efectivo.toFixed(2)}\n`;
+    if(totN.yape>0.005)     txt += `  📱 Yape: S/${totN.yape.toFixed(2)}\n`;
+    if(totN.tarjeta>0.005)  txt += `  💳 Tarjeta: S/${totN.tarjeta.toFixed(2)}\n`;
+    txt += '\n';
+  }
+
+  txt += `${'━'.repeat(28)}\n`;
+  txt += `💵 Efectivo total:  S/ ${(totP.efectivo||0).toFixed(2)}\n`;
+  txt += `📱 Yape/Plin total: S/ ${(totP.yape||0).toFixed(2)}\n`;
+  txt += `💳 Tarjeta total:   S/ ${(totP.tarjeta||0).toFixed(2)}\n`;
+  txt += `${'━'.repeat(28)}\n`;
+  txt += `*TOTAL DÍA: S/ ${totalHoy.toFixed(2)}* (${ventas.length} venta(s))`;
+
+  if(navigator.share) {
+    navigator.share({ title:`Ventas Chifa Suki ${fecha}`, text: txt }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(txt).then(()=>{
+      alert('✓ Resumen copiado al portapapeles.');
+    }).catch(()=>{ prompt('Copia el resumen:', txt); });
+  }
 }
 
 // ═══════════════════════════════════════
