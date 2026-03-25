@@ -1837,13 +1837,15 @@ function saveToCloud() {
 
 // Guarda cada venta PERMANENTEMENTE en historial/{fecha}/ventas/{id}
 function saveVentaHistorial(venta) {
-  const fecha = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  const fecha = new Date().toISOString().slice(0,10);
   db.collection('historial').doc(fecha).collection('ventas').doc(String(venta.id)).set({
     hora: venta.hora,
     origen: venta.origen,
     nota: venta.nota || '',
     items: venta.items,
     total: venta.total,
+    pagos: venta.pagos || [],
+    vuelto: venta.vuelto || 0,
     fecha: fecha,
     ts: venta.id
   }).catch(e => console.error('Error guardando historial:', e));
@@ -1881,53 +1883,117 @@ function cargarHistorial() {
 }
 
 function renderHistorialDia(ventasDia, total, fecha, el) {
-  let html = `<div style="background:#e8f5e9;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
-    <div>
-      <div style="font-size:11px;font-weight:600;color:#2e7d32;text-transform:uppercase;">Total del día ${fecha}</div>
-      <div style="font-size:22px;font-weight:700;color:#2e7d32;">S/ ${total.toFixed(2)}</div>
-    </div>
-    <div style="text-align:right;font-size:12px;color:#388e3c;">${ventasDia.length} venta(s)</div>
-  </div>
-  <div style="display:flex;gap:8px;margin-bottom:12px;">
+  // ── Calcular totales por método de pago ──
+  const metLabels = { efectivo:'💵 Efectivo', yape:'📱 Yape/Plin', tarjeta:'💳 Tarjeta' };
+  const metColors = { efectivo:{ bg:'#e8f5e9', color:'#2e7d32' }, yape:{ bg:'#e3f2fd', color:'#1565c0' }, tarjeta:{ bg:'#f3e5f5', color:'#6a1b9a' } };
+  const totales = { efectivo:0, yape:0, tarjeta:0 };
+
+  ventasDia.forEach(v => {
+    if(v.pagos && v.pagos.length) {
+      v.pagos.forEach(p => {
+        const m = p.metodo || 'efectivo';
+        totales[m] = (totales[m]||0) + (parseFloat(p.monto)||0);
+      });
+    } else {
+      // ventas antiguas sin desglose → asignar al efectivo
+      totales.efectivo += v.total || 0;
+    }
+  });
+
+  const metActivos = Object.keys(totales).filter(m => totales[m] > 0.005);
+
+  // ── Resumen global ──
+  let html = `
+  <div style="background:#e8f5e9;border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:0.08em;">Total del día · ${fecha}</div>
+        <div style="font-size:26px;font-weight:900;color:#2e7d32;">S/ ${total.toFixed(2)}</div>
+      </div>
+      <div style="text-align:right;font-size:12px;color:#388e3c;">${ventasDia.length} venta(s)</div>
+    </div>`;
+
+  // ── Desglose por método ──
+  if(metActivos.length > 0) {
+    html += `<div style="display:grid;grid-template-columns:repeat(${Math.min(metActivos.length,3)},1fr);gap:6px;margin-top:4px;">`;
+    metActivos.forEach(m => {
+      const c = metColors[m] || { bg:'#f5f5f5', color:'#555' };
+      html += `<div style="background:${c.bg};border-radius:8px;padding:8px 10px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:${c.color};text-transform:uppercase;">${metLabels[m]||m}</div>
+        <div style="font-size:17px;font-weight:800;color:${c.color};">S/ ${totales[m].toFixed(2)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // ── Botones exportar/compartir ──
+  html += `<div style="display:flex;gap:8px;margin-bottom:12px;">
     <button onclick="exportarCSV('${fecha}')" style="flex:1;padding:9px;background:#1565c0;color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;">📊 Exportar CSV</button>
     <button onclick="compartirResumenDia('${fecha}')" style="flex:1;padding:9px;background:#2e7d32;color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;">📤 Compartir</button>
   </div>`;
 
+  // ── Lista de ventas individuales ──
   ventasDia.forEach(v => {
+    // Badge(s) de método de pago de esta venta
+    let pagosHtml = '';
+    if(v.pagos && v.pagos.length) {
+      pagosHtml = v.pagos.filter(p=>parseFloat(p.monto)>0).map(p => {
+        const c = metColors[p.metodo] || { bg:'#f5f5f5', color:'#555' };
+        return `<span style="display:inline-block;background:${c.bg};color:${c.color};font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-right:3px;">${metLabels[p.metodo]||p.metodo} S/${parseFloat(p.monto).toFixed(2)}</span>`;
+      }).join('');
+    } else {
+      pagosHtml = `<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;">💵 Efectivo</span>`;
+    }
+
     html += `<div class="res-section" style="border-left:3px solid #2e7d32;margin-bottom:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-        <span style="font-size:13px;font-weight:600;">${v.origen}</span>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:13px;font-weight:700;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
+        <span style="font-size:13px;font-weight:600;flex:1;min-width:0;margin-right:8px;">${v.origen}${v.nota?` <span style="font-weight:400;color:var(--text3);">· ${v.nota}</span>`:''}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <span style="font-size:14px;font-weight:800;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
           <button onclick="eliminarVentaHistorial('${fecha}','${v.ts}')" title="Eliminar venta"
-            style="width:26px;height:26px;border-radius:50%;background:#ffebee;border:1px solid #ef9a9a;color:#c62828;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+            style="width:26px;height:26px;border-radius:50%;background:#ffebee;border:1px solid #ef9a9a;color:#c62828;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">×</button>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">${v.hora}${v.nota?' · '+v.nota:''}</div>
-      ${v.items.map(x=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
+      <div style="font-size:11px;color:var(--text3);margin-bottom:5px;">${v.hora}</div>
+      <div style="margin-bottom:6px;">${pagosHtml}</div>
+      ${v.items.map(x=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:1px 0;"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
     </div>`;
   });
 
   el.innerHTML = html;
-  // Guardamos para exportar
   el._ventasDia = ventasDia;
   el._total = total;
+  el._totales = totales;
   el._fecha = fecha;
 }
 
 function exportarCSV(fecha) {
   const el = document.getElementById('historial-content');
   const ventasDia = el._ventasDia || [];
+  const totales = el._totales || {};
   if(!ventasDia.length) return;
 
-  let csv = 'Fecha,Hora,Origen,Nota,Producto,Cantidad,Precio unitario,Subtotal,Total venta\n';
+  let csv = 'Fecha,Hora,Origen,Nota,Metodo pago,Monto metodo,Producto,Cantidad,Precio unitario,Subtotal,Total venta\n';
   ventasDia.forEach(v => {
+    const pagosStr = v.pagos && v.pagos.length
+      ? v.pagos.filter(p=>p.monto>0).map(p=>`${p.metodo}:${parseFloat(p.monto).toFixed(2)}`).join('|')
+      : 'efectivo:'+v.total.toFixed(2);
+    const primerMetodo = v.pagos && v.pagos.length ? v.pagos[0].metodo : 'efectivo';
+    const primerMonto  = v.pagos && v.pagos.length ? parseFloat(v.pagos[0].monto).toFixed(2) : v.total.toFixed(2);
     v.items.forEach((x,i) => {
-      csv += `${fecha},"${v.hora}","${v.origen}","${v.nota||''}","${x.name}",${x.qty},${x.precio.toFixed(2)},${(x.precio*x.qty).toFixed(2)},${i===0?v.total.toFixed(2):''}\n`;
+      csv += `${fecha},"${v.hora}","${v.origen}","${v.nota||''}","${i===0?primerMetodo:''}","${i===0?primerMonto:''}","${x.name}",${x.qty},${x.precio.toFixed(2)},${(x.precio*x.qty).toFixed(2)},${i===0?v.total.toFixed(2):''}\n`;
     });
   });
 
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  // Resumen por método al final
+  csv += '\n"RESUMEN POR MÉTODO",,,,,,,,,,\n';
+  csv += `"Efectivo",,,,,,,,,,${(totales.efectivo||0).toFixed(2)}\n`;
+  csv += `"Yape/Plin",,,,,,,,,,${(totales.yape||0).toFixed(2)}\n`;
+  csv += `"Tarjeta",,,,,,,,,,${(totales.tarjeta||0).toFixed(2)}\n`;
+  csv += `"TOTAL",,,,,,,,,,${((totales.efectivo||0)+(totales.yape||0)+(totales.tarjeta||0)).toFixed(2)}\n`;
+
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -1940,6 +2006,7 @@ function compartirResumenDia(fecha) {
   const el = document.getElementById('historial-content');
   const ventasDia = el._ventasDia || [];
   const total = el._total || 0;
+  const totales = el._totales || {};
   if(!ventasDia.length) return;
 
   let txt = `🍜 *CHIFA SUKI — Ventas del ${fecha}*\n`;
@@ -1947,8 +2014,17 @@ function compartirResumenDia(fecha) {
   ventasDia.forEach(v => {
     txt += `${v.hora} · ${v.origen}`;
     if(v.nota) txt += ` (${v.nota})`;
+    // método(s)
+    if(v.pagos && v.pagos.length) {
+      const metStr = v.pagos.filter(p=>p.monto>0).map(p=>`${p.metodo} S/${parseFloat(p.monto).toFixed(2)}`).join(' + ');
+      txt += ` [${metStr}]`;
+    }
     txt += ` → *S/ ${v.total.toFixed(2)}*\n`;
   });
+  txt += `────────────────────\n`;
+  if(totales.efectivo > 0.005) txt += `💵 Efectivo:  S/ ${totales.efectivo.toFixed(2)}\n`;
+  if(totales.yape    > 0.005) txt += `📱 Yape/Plin: S/ ${totales.yape.toFixed(2)}\n`;
+  if(totales.tarjeta > 0.005) txt += `💳 Tarjeta:   S/ ${totales.tarjeta.toFixed(2)}\n`;
   txt += `────────────────────\n`;
   txt += `*TOTAL: S/ ${total.toFixed(2)}*\n`;
   txt += `${ventasDia.length} venta(s)`;
