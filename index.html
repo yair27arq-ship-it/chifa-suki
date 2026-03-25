@@ -1701,8 +1701,63 @@ function printTicket(tipo) {
 }
 
 // ═══════════════════════════════════════
+// HELPERS PAGOS
+// ═══════════════════════════════════════
+const MET_LABELS = { efectivo:'💵 Efectivo', yape:'📱 Yape/Plin', tarjeta:'💳 Tarjeta' };
+const MET_COLORS = {
+  efectivo:{ bg:'#e8f5e9', color:'#2e7d32', border:'#a5d6a7' },
+  yape:    { bg:'#e3f2fd', color:'#1565c0', border:'#90caf9' },
+  tarjeta: { bg:'#f3e5f5', color:'#6a1b9a', border:'#ce93d8' }
+};
+
+function calcTotalesPagos(listaVentas) {
+  const t = { efectivo:0, yape:0, tarjeta:0 };
+  listaVentas.forEach(v => {
+    if(v.pagos && v.pagos.length) {
+      v.pagos.forEach(p => { const m = p.metodo||'efectivo'; t[m] = (t[m]||0) + (parseFloat(p.monto)||0); });
+    } else {
+      t.efectivo += v.total||0;
+    }
+  });
+  return t;
+}
+
+function badgesPagos(v) {
+  if(v.pagos && v.pagos.length) {
+    return v.pagos.filter(p=>parseFloat(p.monto)>0.005).map(p=>{
+      const c = MET_COLORS[p.metodo]||{bg:'#f5f5f5',color:'#555'};
+      return `<span style="display:inline-block;background:${c.bg};color:${c.color};border:1px solid ${c.border||'#ccc'};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-right:3px;margin-top:2px;">${MET_LABELS[p.metodo]||p.metodo} S/${parseFloat(p.monto).toFixed(2)}</span>`;
+    }).join('');
+  }
+  return `<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">💵 Efectivo</span>`;
+}
+
+function tarjetasTotalesPagos(totales) {
+  const activos = Object.keys(totales).filter(m=>totales[m]>0.005);
+  if(!activos.length) return '';
+  const cols = Math.min(activos.length, 3);
+  return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:6px;margin-top:8px;">
+    ${activos.map(m=>{
+      const c = MET_COLORS[m]||{bg:'#f5f5f5',color:'#555'};
+      return `<div style="background:${c.bg};border-radius:8px;padding:8px 10px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:${c.color};text-transform:uppercase;">${MET_LABELS[m]||m}</div>
+        <div style="font-size:17px;font-weight:800;color:${c.color};">S/ ${totales[m].toFixed(2)}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
 // RESUMEN
 // ═══════════════════════════════════════
+function eliminarVentaDia(vi) {
+  if(!confirm('¿Eliminar esta venta del resumen del día?\nEsta acción no se puede deshacer.')) return;
+  ventas.splice(vi, 1);
+  localLastSave = Date.now();
+  saveToCloud();
+  renderResumen();
+}
+
 function renderResumen() {
   const el = document.getElementById('resumen-content');
   const occ = mesas.filter(m=>m.pedido.length>0);
@@ -1710,32 +1765,48 @@ function renderResumen() {
   const totalVentas = ventas.reduce((a,v)=>a+v.total,0);
   const totalActivo = [...occ.map(m=>m.pedido.reduce((a,x)=>a+x.precio*x.qty,0)),
                        ...occOrdenes.map(o=>o.pedido.reduce((a,x)=>a+x.precio*x.qty,0))].reduce((a,b)=>a+b,0);
+  const totPagos = calcTotalesPagos(ventas);
 
   let html = '<div style="height:10px;"></div>';
 
-  // ── TARJETAS RESUMEN ──
-  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px;">
+  // ── TARJETAS RESUMEN GLOBAL ──
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 10px;">
     <div style="background:#e8f5e9;border-radius:var(--radius);padding:12px;text-align:center;">
-      <div style="font-size:11px;color:#2e7d32;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Cobrado hoy</div>
+      <div style="font-size:10px;color:#2e7d32;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cobrado hoy</div>
       <div style="font-size:22px;font-weight:700;color:#2e7d32;margin-top:4px;">S/ ${totalVentas.toFixed(2)}</div>
       <div style="font-size:11px;color:#388e3c;margin-top:2px;">${ventas.length} venta(s)</div>
     </div>
     <div style="background:var(--brand-light);border-radius:var(--radius);padding:12px;text-align:center;">
-      <div style="font-size:11px;color:var(--brand);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">En mesa / activo</div>
+      <div style="font-size:10px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">En mesa / activo</div>
       <div style="font-size:22px;font-weight:700;color:var(--brand);margin-top:4px;">S/ ${totalActivo.toFixed(2)}</div>
       <div style="font-size:11px;color:var(--brand);margin-top:2px;">${occ.length+occOrdenes.length} pedido(s)</div>
     </div>
-  </div>
-  <div style="margin:0 12px 12px;background:#fff8e1;border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
-    <div>
-      <div style="font-size:11px;color:#f57f17;font-weight:600;text-transform:uppercase;">Total del día</div>
-      <div style="font-size:26px;font-weight:700;color:#e65100;">S/ ${(totalVentas+totalActivo).toFixed(2)}</div>
-    </div>
-    <div style="text-align:right;font-size:11px;color:var(--text2);">
-      <div>${ventas.length} cobro(s)</div>
-      <div>${occ.length+occOrdenes.length} pendiente(s)</div>
-    </div>
   </div>`;
+
+  // ── DESGLOSE POR MÉTODO DE PAGO ──
+  if(ventas.length) {
+    html += `<div style="margin:0 12px 12px;background:#fff8e1;border-radius:var(--radius);padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:10px;color:#f57f17;font-weight:700;text-transform:uppercase;">Total cobrado</div>
+          <div style="font-size:26px;font-weight:800;color:#e65100;">S/ ${totalVentas.toFixed(2)}</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:var(--text2);">
+          <div>${ventas.length} cobro(s)</div>
+          <div>${occ.length+occOrdenes.length} pendiente(s)</div>
+        </div>
+      </div>
+      ${tarjetasTotalesPagos(totPagos)}
+    </div>`;
+  } else {
+    html += `<div style="margin:0 12px 12px;background:#fff8e1;border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:10px;color:#f57f17;font-weight:700;text-transform:uppercase;">Total del día</div>
+        <div style="font-size:26px;font-weight:700;color:#e65100;">S/ ${totalActivo.toFixed(2)}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);">${occ.length+occOrdenes.length} pendiente(s)</div>
+    </div>`;
+  }
 
   // ── PEDIDOS ACTIVOS ──
   if(occ.length || occOrdenes.length) {
@@ -1767,20 +1838,25 @@ function renderResumen() {
     });
   }
 
-  // ── HISTORIAL DE VENTAS ──
+  // ── COBROS DEL DÍA ──
   if(ventas.length) {
-    html += `<div style="padding:12px 12px 6px;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">Historial de cobros</div>`;
+    html += `<div style="padding:12px 12px 6px;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">Cobros del día</div>`;
     [...ventas].reverse().forEach((v,ri)=>{
       const vi = ventas.length - 1 - ri;
       html += `<div class="res-section" style="border-left:3px solid #2e7d32;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <div>
-            <span style="font-size:13px;font-weight:600;color:var(--text);">${v.origen}</span>
-            ${v.nota?`<span style="font-size:11px;color:var(--text2);margin-left:6px;">${v.nota}</span>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
+          <div style="flex:1;min-width:0;margin-right:8px;">
+            <span style="font-size:13px;font-weight:700;color:var(--text);">${v.origen}</span>
+            ${v.nota?`<span style="font-size:11px;color:var(--text2);margin-left:5px;">· ${v.nota}</span>`:''}
           </div>
-          <span style="font-size:14px;font-weight:700;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <span style="font-size:14px;font-weight:800;color:#2e7d32;">S/ ${v.total.toFixed(2)}</span>
+            <button onclick="eliminarVentaDia(${vi})" title="Eliminar venta"
+              style="width:26px;height:26px;border-radius:50%;background:#ffebee;border:1px solid #ef9a9a;color:#c62828;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">×</button>
+          </div>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-bottom:5px;">${v.hora}</div>
+        <div style="margin-bottom:6px;">${badgesPagos(v)}</div>
         ${v.items.map(x=>`<div class="res-item" style="font-size:11px;"><span>${x.qty}x ${x.name}</span><span>S/ ${(x.precio*x.qty).toFixed(2)}</span></div>`).join('')}
         <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
           <button onclick="editarVenta(${vi})" style="flex:1;padding:6px;background:#fff3e0;color:#e65100;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✏️ Editar</button>
@@ -2116,18 +2192,35 @@ function resetDia() {
   const mesasActivas = mesas.filter(m=>m.pedido.length>0);
   const ordenesActivas = ordenes.filter(o=>o.pedido.length>0);
   const pendientes = mesasActivas.length + ordenesActivas.length;
+  const totPagos = calcTotalesPagos(ventas);
 
-  let msg = '';
+  // Construir mensaje detallado
+  let msg = '🍜 CHIFA SUKI — CIERRE DE JORNADA\n';
+  msg += '════════════════════════\n\n';
+
+  if(ventas.length) {
+    msg += `✅ COBROS REALIZADOS: ${ventas.length} venta(s)\n\n`;
+    msg += `💰 DESGLOSE POR MÉTODO:\n`;
+    if(totPagos.efectivo > 0.005) msg += `  💵 Efectivo:   S/ ${totPagos.efectivo.toFixed(2)}\n`;
+    if(totPagos.yape    > 0.005) msg += `  📱 Yape/Plin:  S/ ${totPagos.yape.toFixed(2)}\n`;
+    if(totPagos.tarjeta > 0.005) msg += `  💳 Tarjeta:    S/ ${totPagos.tarjeta.toFixed(2)}\n`;
+    msg += `\n  TOTAL COBRADO: S/ ${totalHoy.toFixed(2)}\n`;
+  } else {
+    msg += '  Sin ventas registradas hoy.\n';
+  }
+
   if(pendientes > 0) {
     const totalPend = [
       ...mesasActivas.map(m=>m.pedido.reduce((a,x)=>a+x.precio*x.qty,0)),
       ...ordenesActivas.map(o=>o.pedido.reduce((a,x)=>a+x.precio*x.qty,0))
     ].reduce((a,b)=>a+b,0);
-    msg = `⚠️ Hay ${pendientes} pedido(s) sin cobrar (S/ ${totalPend.toFixed(2)}) que se perderán.\n\n`;
+    msg += `\n⚠️ PENDIENTES SIN COBRAR:\n`;
+    msg += `  ${pendientes} pedido(s) — S/ ${totalPend.toFixed(2)}\n`;
+    msg += `  (se perderán al cerrar)\n`;
   }
-  msg += ventas.length
-    ? `Total cobrado hoy: S/ ${totalHoy.toFixed(2)} (${ventas.length} venta(s))\n\n¿Cerrar el día y ver el historial?`
-    : '¿Cerrar el día y reiniciar todas las mesas?';
+
+  msg += '\n════════════════════════\n';
+  msg += '¿Confirmar cierre de jornada?';
 
   if(!confirm(msg)) return;
 
