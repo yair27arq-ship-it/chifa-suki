@@ -567,11 +567,53 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     </div>
   </div>
 
+  <!-- MODAL EGRESO -->
+  <div class="modal-overlay" id="modal-egreso">
+    <div class="modal-box" style="max-width:360px;padding-bottom:24px;">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="cerrarModalEgreso()">×</button>
+      <div class="modal-title">📤 Registrar Egreso</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Registra un gasto o retiro de caja (compra de insumos, pago de servicio, etc.)</div>
+
+      <!-- Descripción -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:5px;">Descripción</div>
+        <input id="egreso-desc" class="nota-in" placeholder="Ej: Compra de aceite, pago gas, limpieza..." style="width:100%;margin:0;" />
+      </div>
+
+      <!-- Monto -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:5px;">Monto</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;font-weight:700;color:var(--text2);">S/</span>
+          <input type="number" id="egreso-monto" min="0.50" step="0.50" placeholder="0.00"
+            style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:22px;font-weight:700;color:#c62828;background:#fff8f8;outline:none;text-align:right;" />
+        </div>
+      </div>
+
+      <!-- Método -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:5px;">Sale de</div>
+        <div style="display:flex;gap:8px;">
+          <button id="egreso-met-efectivo" onclick="selEgresoMet('efectivo')"
+            style="flex:1;padding:10px 6px;border:1.5px solid #a5d6a7;border-radius:10px;background:#e8f5e9;color:#2e7d32;font-size:12px;font-weight:700;cursor:pointer;">💵 Efectivo</button>
+          <button id="egreso-met-yape" onclick="selEgresoMet('yape')"
+            style="flex:1;padding:10px 6px;border:1.5px solid var(--border2);border-radius:10px;background:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">📱 Yape/Plin</button>
+          <button id="egreso-met-tarjeta" onclick="selEgresoMet('tarjeta')"
+            style="flex:1;padding:10px 6px;border:1.5px solid var(--border2);border-radius:10px;background:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">💳 Tarjeta</button>
+        </div>
+      </div>
+
+      <button onclick="confirmarEgreso()" style="width:100%;padding:14px;background:#c62828;color:white;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:800;cursor:pointer;">− REGISTRAR EGRESO</button>
+    </div>
+  </div>
+
   <!-- RESUMEN -->
   <div class="screen" id="scr-resumen">
     <div class="screen-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <button onclick="showScreen('mesas')" style="font-size:20px;color:var(--brand);background:none;border:none;cursor:pointer;padding:0 4px 0 0;line-height:1;flex-shrink:0;">←</button>
       <span style="flex:1;">Ventas del día</span>
+      <button onclick="abrirModalEgreso()" style="font-size:11px;font-weight:700;color:#c62828;background:#ffebee;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;flex-shrink:0;">− Egreso</button>
       <button onclick="compartirResumenHoy()" style="font-size:11px;font-weight:700;color:#1565c0;background:#e3f2fd;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;flex-shrink:0;">📤 Compartir</button>
       <button onclick="resetDia()" style="font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-light);border:none;border-radius:6px;padding:5px 10px;cursor:pointer;flex-shrink:0;">Cerrar día</button>
     </div>
@@ -765,6 +807,7 @@ const EXTRAS = [
 let mesas = Array.from({length:9},(_,i)=>({id:i+1,pedido:[],nota:''}));
 let ordenes = Array.from({length:6},(_,i)=>({id:i+1,pedido:[],nota:''}));
 let ventas = []; // historial de ventas del día
+let egresos = []; // egresos / gastos del día
 let curMesa = 1;
 let curOrden = 1;
 let curTab = 0;
@@ -1840,11 +1883,18 @@ function renderResumen() {
   const occ = mesas.filter(m=>m.pedido.length>0);
   const occOrdenes = ordenes.filter(o=>o.pedido.length>0);
   const totalVentas = ventas.reduce((a,v)=>a+v.total,0);
+  const totalEgresos = egresos.reduce((a,e)=>a+e.monto,0);
+  const totalNeto = totalVentas - totalEgresos;
   const totalActivo = [...occ.map(m=>m.pedido.reduce((a,x)=>a+x.precio*x.qty,0)),
                        ...occOrdenes.map(o=>o.pedido.reduce((a,x)=>a+x.precio*x.qty,0))].reduce((a,b)=>a+b,0);
   const totPagosTotal = calcTotalesPagos(ventas);
 
-  // Separar por turnos (guardar índice real para editar/eliminar)
+  // Egresos por método
+  const egEfectivo = egresos.filter(e=>e.metodo==='efectivo').reduce((a,e)=>a+e.monto,0);
+  const egYape    = egresos.filter(e=>e.metodo==='yape').reduce((a,e)=>a+e.monto,0);
+  const egTarjeta = egresos.filter(e=>e.metodo==='tarjeta').reduce((a,e)=>a+e.monto,0);
+
+  // Separar por turnos
   const vManana = [], vNoche = [];
   ventas.forEach((v, vi) => {
     const vCopy = Object.assign({}, v, {__vi: vi});
@@ -1869,12 +1919,13 @@ function renderResumen() {
       </div>
     </div>`;
 
-  if(ventas.length) {
-    html += `<div style="background:#fff8e1;border-radius:var(--radius);padding:12px;">
+  if(ventas.length || egresos.length) {
+    // Tarjeta ingresos
+    html += `<div style="background:#fff8e1;border-radius:var(--radius);padding:12px;margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div>
           <div style="font-size:10px;color:#f57f17;font-weight:700;text-transform:uppercase;">Total cobrado</div>
-          <div style="font-size:26px;font-weight:800;color:#e65100;">S/ ${totalVentas.toFixed(2)}</div>
+          <div style="font-size:24px;font-weight:800;color:#e65100;">S/ ${totalVentas.toFixed(2)}</div>
         </div>
         <div style="text-align:right;font-size:11px;color:var(--text2);">
           <div>${ventas.length} cobro(s)</div>
@@ -1883,6 +1934,43 @@ function renderResumen() {
       </div>
       ${tarjetasTotalesPagos(totPagosTotal)}
     </div>`;
+
+    // Tarjeta egresos (si hay)
+    if(egresos.length) {
+      html += `<div style="background:#ffebee;border:1px solid #ef9a9a;border-radius:var(--radius);padding:12px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:10px;color:#c62828;font-weight:700;text-transform:uppercase;">📤 Egresos / Gastos</div>
+            <div style="font-size:24px;font-weight:800;color:#c62828;">− S/ ${totalEgresos.toFixed(2)}</div>
+          </div>
+          <div style="text-align:right;font-size:11px;color:#c62828;">${egresos.length} registro(s)</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(${[egEfectivo,egYape,egTarjeta].filter(x=>x>0.005).length||1},1fr);gap:6px;margin-top:8px;">
+          ${egEfectivo>0.005?`<div style="background:#fff;border-radius:8px;padding:6px 10px;text-align:center;"><div style="font-size:10px;color:#2e7d32;font-weight:700;">💵 Efectivo</div><div style="font-size:15px;font-weight:800;color:#c62828;">− S/ ${egEfectivo.toFixed(2)}</div></div>`:''}
+          ${egYape>0.005?`<div style="background:#fff;border-radius:8px;padding:6px 10px;text-align:center;"><div style="font-size:10px;color:#1565c0;font-weight:700;">📱 Yape</div><div style="font-size:15px;font-weight:800;color:#c62828;">− S/ ${egYape.toFixed(2)}</div></div>`:''}
+          ${egTarjeta>0.005?`<div style="background:#fff;border-radius:8px;padding:6px 10px;text-align:center;"><div style="font-size:10px;color:#6a1b9a;font-weight:700;">💳 Tarjeta</div><div style="font-size:15px;font-weight:800;color:#c62828;">− S/ ${egTarjeta.toFixed(2)}</div></div>`:''}
+        </div>
+      </div>`;
+
+      // Tarjeta neto
+      const netoEfec = totPagosTotal.efectivo - egEfectivo;
+      const netoYape = (totPagosTotal.yape||0) - egYape;
+      const netoTarj = (totPagosTotal.tarjeta||0) - egTarjeta;
+      html += `<div style="background:#e8eaf6;border:1px solid #9fa8da;border-radius:var(--radius);padding:12px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:10px;color:#283593;font-weight:700;text-transform:uppercase;">💼 Neto en caja</div>
+            <div style="font-size:26px;font-weight:900;color:#283593;">S/ ${totalNeto.toFixed(2)}</div>
+          </div>
+          <div style="font-size:11px;color:#3949ab;">Ingresos − Egresos</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(${[netoEfec,netoYape,netoTarj].filter((_,i)=>[totPagosTotal.efectivo,totPagosTotal.yape,totPagosTotal.tarjeta][i]>0.005||[egEfectivo,egYape,egTarjeta][i]>0.005).length||1},1fr);gap:6px;">
+          ${(totPagosTotal.efectivo>0.005||egEfectivo>0.005)?`<div style="background:#fff;border-radius:8px;padding:6px 10px;text-align:center;"><div style="font-size:10px;color:#2e7d32;font-weight:700;">💵 Efectivo</div><div style="font-size:15px;font-weight:800;color:#283593;">S/ ${netoEfec.toFixed(2)}</div></div>`:''}
+          ${(totPagosTotal.yape>0.005||egYape>0.005)?`<div style="background:#fff;border-radius:8px;padding:6px 10px;text-align:center;"><div style="font-size:10px;color:#1565c0;font-weight:700;">📱 Yape</div><div style="font-size:15px;font-weight:800;color:#283593;">S/ ${netoYape.toFixed(2)}</div></div>`:''}
+          ${(totPagosTotal.tarjeta>0.005||egTarjeta>0.005)?`<div style="background:#fff;border-radius:8px;padding:6px 10px;text-align:center;"><div style="font-size:10px;color:#6a1b9a;font-weight:700;">💳 Tarjeta</div><div style="font-size:15px;font-weight:800;color:#283593;">S/ ${netoTarj.toFixed(2)}</div></div>`:''}
+        </div>
+      </div>`;
+    }
   }
   html += `</div>`;
 
@@ -1924,8 +2012,30 @@ function renderResumen() {
     if(!vManana.length && !vNoche.length) {
       html += `<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">Sin cobros registrados aún.</div>`;
     }
-  } else if(!occ.length && !occOrdenes.length) {
+  } else if(!occ.length && !occOrdenes.length && !egresos.length) {
     html += `<div style="padding:24px 16px;text-align:center;color:var(--text3);font-size:13px;">Sin ventas registradas hoy.</div>`;
+  }
+
+  // ── EGRESOS ──
+  if(egresos.length) {
+    html += `<div style="padding:10px 12px 4px;font-size:12px;font-weight:700;color:#c62828;text-transform:uppercase;letter-spacing:.05em;">📤 Egresos / Gastos</div>`;
+    egresos.forEach((e, ei) => {
+      const c = MET_COLORS[e.metodo]||{bg:'#f5f5f5',color:'#555',border:'#ccc'};
+      html += `<div class="res-section" style="border-left:3px solid #ef9a9a;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:var(--text);">${e.desc}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">${e.hora}</div>
+            <span style="display:inline-block;background:${c.bg};color:${c.color};border:1px solid ${c.border};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:4px;">${MET_LABELS[e.metodo]||e.metodo}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <span style="font-size:15px;font-weight:800;color:#c62828;">− S/ ${e.monto.toFixed(2)}</span>
+            <button onclick="eliminarEgreso(${ei})" title="Eliminar egreso"
+              style="width:26px;height:26px;border-radius:50%;background:#ffebee;border:1px solid #ef9a9a;color:#c62828;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
+          </div>
+        </div>
+      </div>`;
+    });
   }
 
   html += '<div style="height:24px;"></div>';
@@ -1995,6 +2105,21 @@ function compartirResumenHoy() {
   txt += `${'━'.repeat(28)}\n`;
   txt += `*TOTAL DÍA: S/ ${totalHoy.toFixed(2)}* (${ventas.length} venta(s))`;
 
+  if(egresos.length) {
+    const totalEg = egresos.reduce((a,e)=>a+e.monto,0);
+    const egEf = egresos.filter(e=>e.metodo==='efectivo').reduce((a,e)=>a+e.monto,0);
+    const egYp = egresos.filter(e=>e.metodo==='yape').reduce((a,e)=>a+e.monto,0);
+    const egTj = egresos.filter(e=>e.metodo==='tarjeta').reduce((a,e)=>a+e.monto,0);
+    txt += `\n\n📤 *EGRESOS / GASTOS:*\n`;
+    egresos.forEach(e => { txt += `  − ${e.desc}: S/ ${e.monto.toFixed(2)} (${e.metodo})\n`; });
+    txt += `Total egresos: S/ ${totalEg.toFixed(2)}\n`;
+    txt += `${'━'.repeat(28)}\n`;
+    txt += `💼 *NETO EN CAJA: S/ ${(totalHoy-totalEg).toFixed(2)}*\n`;
+    if(egEf>0.005) txt += `  💵 Efectivo neto: S/ ${((totP.efectivo||0)-egEf).toFixed(2)}\n`;
+    if(egYp>0.005) txt += `  📱 Yape neto:     S/ ${((totP.yape||0)-egYp).toFixed(2)}\n`;
+    if(egTj>0.005) txt += `  💳 Tarjeta neto:  S/ ${((totP.tarjeta||0)-egTj).toFixed(2)}\n`;
+  }
+
   if(navigator.share) {
     navigator.share({ title:`Ventas Chifa Suki ${fecha}`, text: txt }).catch(()=>{});
   } else {
@@ -2036,6 +2161,7 @@ function saveToCloud() {
     mesas: mesasData,
     ordenes: ordenesData,
     ventas: ventas,
+    egresos: egresos,
     updatedAt: Date.now()
   })
     .then(() => setSyncStatus('✓ Sincronizado', true))
@@ -2262,6 +2388,9 @@ function startRealtimeSync() {
     if(data.ventas && Array.isArray(data.ventas)) {
       ventas = data.ventas;
     }
+    if(data.egresos && Array.isArray(data.egresos)) {
+      egresos = data.egresos;
+    }
     renderMesas();
     renderOrdenesGrid();
     renderOrderList();
@@ -2320,24 +2449,40 @@ function clearOrder() {
 const _resetDia = resetDia;
 function resetDia() {
   const totalHoy = ventas.reduce((a,v)=>a+v.total,0);
+  const totalEgresos = egresos.reduce((a,e)=>a+e.monto,0);
   const mesasActivas = mesas.filter(m=>m.pedido.length>0);
   const ordenesActivas = ordenes.filter(o=>o.pedido.length>0);
   const pendientes = mesasActivas.length + ordenesActivas.length;
   const totPagos = calcTotalesPagos(ventas);
 
-  // Construir mensaje detallado
+  // Calcular neto por método restando egresos
+  const egEfectivo = egresos.filter(e=>e.metodo==='efectivo').reduce((a,e)=>a+e.monto,0);
+  const egYape    = egresos.filter(e=>e.metodo==='yape').reduce((a,e)=>a+e.monto,0);
+  const egTarjeta = egresos.filter(e=>e.metodo==='tarjeta').reduce((a,e)=>a+e.monto,0);
+
   let msg = '🍜 CHIFA SUKI — CIERRE DE JORNADA\n';
   msg += '════════════════════════\n\n';
 
   if(ventas.length) {
     msg += `✅ COBROS REALIZADOS: ${ventas.length} venta(s)\n\n`;
-    msg += `💰 DESGLOSE POR MÉTODO:\n`;
-    if(totPagos.efectivo > 0.005) msg += `  💵 Efectivo:   S/ ${totPagos.efectivo.toFixed(2)}\n`;
-    if(totPagos.yape    > 0.005) msg += `  📱 Yape/Plin:  S/ ${totPagos.yape.toFixed(2)}\n`;
-    if(totPagos.tarjeta > 0.005) msg += `  💳 Tarjeta:    S/ ${totPagos.tarjeta.toFixed(2)}\n`;
+    msg += `💰 INGRESOS POR MÉTODO:\n`;
+    if(totPagos.efectivo>0.005) msg += `  💵 Efectivo:   S/ ${totPagos.efectivo.toFixed(2)}\n`;
+    if(totPagos.yape>0.005)     msg += `  📱 Yape/Plin:  S/ ${totPagos.yape.toFixed(2)}\n`;
+    if(totPagos.tarjeta>0.005)  msg += `  💳 Tarjeta:    S/ ${totPagos.tarjeta.toFixed(2)}\n`;
     msg += `\n  TOTAL COBRADO: S/ ${totalHoy.toFixed(2)}\n`;
   } else {
     msg += '  Sin ventas registradas hoy.\n';
+  }
+
+  if(egresos.length) {
+    msg += `\n📤 EGRESOS/GASTOS: ${egresos.length} registro(s)\n`;
+    egresos.forEach(e => { msg += `  - ${e.desc}: S/ ${e.monto.toFixed(2)} (${e.metodo})\n`; });
+    msg += `  TOTAL EGRESOS: S/ ${totalEgresos.toFixed(2)}\n`;
+    msg += `\n💼 NETO EN CAJA:\n`;
+    if(totPagos.efectivo>0.005||egEfectivo>0) msg += `  💵 Efectivo:   S/ ${(totPagos.efectivo-egEfectivo).toFixed(2)}\n`;
+    if(totPagos.yape>0.005||egYape>0)         msg += `  📱 Yape/Plin:  S/ ${(totPagos.yape-egYape).toFixed(2)}\n`;
+    if(totPagos.tarjeta>0.005||egTarjeta>0)   msg += `  💳 Tarjeta:    S/ ${(totPagos.tarjeta-egTarjeta).toFixed(2)}\n`;
+    msg += `  NETO TOTAL: S/ ${(totalHoy - totalEgresos).toFixed(2)}\n`;
   }
 
   if(pendientes > 0) {
@@ -2360,6 +2505,7 @@ function resetDia() {
   mesas=Array.from({length:9},(_,i)=>({id:i+1,pedido:[],nota:''}));
   ordenes=Array.from({length:6},(_,i)=>({id:i+1,pedido:[],nota:''}));
   ventas=[];
+  egresos=[];
   menuEntSel={};
   localLastSave = Date.now();
   saveToCloud();
@@ -2816,6 +2962,76 @@ function cargarHistorialCaja(fecha) {
       }).join('');
     }).catch(()=>{});
 }
+
+// ═══════════════════════════════════════
+// EGRESOS / GASTOS DE CAJA
+// ═══════════════════════════════════════
+let egresoMetSel = 'efectivo';
+
+function abrirModalEgreso() {
+  egresoMetSel = 'efectivo';
+  document.getElementById('egreso-desc').value = '';
+  document.getElementById('egreso-monto').value = '';
+  selEgresoMet('efectivo');
+  document.getElementById('modal-egreso').classList.add('open');
+  setTimeout(()=>{ document.getElementById('egreso-desc').focus(); }, 200);
+}
+
+function cerrarModalEgreso() {
+  document.getElementById('modal-egreso').classList.remove('open');
+}
+
+function selEgresoMet(met) {
+  egresoMetSel = met;
+  ['efectivo','yape','tarjeta'].forEach(m => {
+    const btn = document.getElementById('egreso-met-'+m);
+    if(!btn) return;
+    const c = MET_COLORS[m];
+    if(m === met) {
+      btn.style.background = c.bg;
+      btn.style.borderColor = c.border || c.color;
+      btn.style.color = c.color;
+      btn.style.fontWeight = '700';
+    } else {
+      btn.style.background = 'none';
+      btn.style.borderColor = 'var(--border2)';
+      btn.style.color = 'var(--text2)';
+      btn.style.fontWeight = '600';
+    }
+  });
+}
+
+function confirmarEgreso() {
+  const desc  = (document.getElementById('egreso-desc').value || '').trim();
+  const monto = parseFloat(document.getElementById('egreso-monto').value) || 0;
+  if(!desc)       { alert('Escribe una descripción del egreso.'); return; }
+  if(monto <= 0)  { alert('Ingresa un monto válido.'); return; }
+
+  const egreso = {
+    id: Date.now(),
+    hora: now(),
+    desc,
+    monto,
+    metodo: egresoMetSel
+  };
+  egresos.push(egreso);
+  cerrarModalEgreso();
+  localLastSave = Date.now();
+  saveToCloud();
+  renderResumen();
+}
+
+function eliminarEgreso(ei) {
+  if(!confirm('¿Eliminar este egreso?')) return;
+  egresos.splice(ei, 1);
+  localLastSave = Date.now();
+  saveToCloud();
+  renderResumen();
+}
+
+document.getElementById('modal-egreso').addEventListener('click', e => {
+  if(e.target === document.getElementById('modal-egreso')) cerrarModalEgreso();
+});
 
 // Init
 renderMesas();
