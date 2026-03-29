@@ -1832,7 +1832,8 @@ function getTurno(hora) {
 function eliminarVentaDia(vi) {
   if(!confirm('¿Eliminar esta venta del resumen del día?\nEsta acción no se puede deshacer.')) return;
   ventas.splice(vi, 1);
-  localLastSave = Date.now();
+  // Usar timestamp futuro para que el listener de Firestore no sobreescriba este cambio
+  localLastSave = Date.now() + 10000;
   saveToCloud();
   renderResumen();
 }
@@ -2392,6 +2393,7 @@ function startRealtimeSync() {
     if(!doc.exists) { saveToCloud(); return; }
     const data = doc.data();
     const remoteTs = data.updatedAt || 0;
+    // Solo aplicar si el cambio vino de otro dispositivo
     if(remoteTs <= localLastSave) return;
 
     if(data.mesas && Array.isArray(data.mesas)) {
@@ -2411,6 +2413,9 @@ function startRealtimeSync() {
     renderOrderList();
     renderLlevarList();
     updateMobCounter();
+    // Si el resumen está visible, actualizarlo también
+    const scrResumen = document.getElementById('scr-resumen');
+    if(scrResumen && scrResumen.classList.contains('active')) renderResumen();
     setSyncStatus('✓ Sincronizado', true);
   }, () => setSyncStatus('⚠ Sin conexión', false));
   setSyncStatus('✓ En línea', true);
@@ -3031,7 +3036,7 @@ function confirmarEgreso() {
   };
   egresos.push(egreso);
   cerrarModalEgreso();
-  localLastSave = Date.now();
+  localLastSave = Date.now() + 10000;
   saveToCloud();
   renderResumen();
 }
@@ -3039,7 +3044,7 @@ function confirmarEgreso() {
 function eliminarEgreso(ei) {
   if(!confirm('¿Eliminar este egreso?')) return;
   egresos.splice(ei, 1);
-  localLastSave = Date.now();
+  localLastSave = Date.now() + 10000;
   saveToCloud();
   renderResumen();
 }
