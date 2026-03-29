@@ -1759,14 +1759,20 @@ function calcTotalesPagos(listaVentas) {
   listaVentas.forEach(v => {
     const vuelto = parseFloat(v.vuelto) || 0;
     if(v.pagos && v.pagos.length) {
+      // Sumar cada método de pago por separado para esta venta
+      let efecEstaVenta = 0;
       v.pagos.forEach(p => {
         const m = p.metodo || 'efectivo';
-        t[m] = (t[m]||0) + (parseFloat(p.monto)||0);
+        const monto = parseFloat(p.monto) || 0;
+        t[m] = (t[m]||0) + monto;
+        if(m === 'efectivo') efecEstaVenta += monto;
       });
-      // El vuelto siempre sale del efectivo → restar al efectivo
-      t.efectivo = Math.max(0, t.efectivo - vuelto);
+      // El vuelto siempre sale del efectivo de ESTA venta
+      // Restar solo lo que corresponde a esta transacción
+      const vueltoEfec = Math.min(vuelto, efecEstaVenta);
+      t.efectivo = Math.max(0, t.efectivo - vueltoEfec);
     } else {
-      // Ventas antiguas sin desglose: el total ya es lo que ingresó
+      // Ventas antiguas sin desglose: el total ya es lo neto que ingresó
       t.efectivo += v.total || 0;
     }
   });
@@ -1776,15 +1782,20 @@ function calcTotalesPagos(listaVentas) {
 function badgesPagos(v) {
   const vuelto = parseFloat(v.vuelto) || 0;
   if(v.pagos && v.pagos.length) {
+    // Calcular el efectivo entregado en esta venta específica
+    const efecEntregado = v.pagos
+      .filter(p => p.metodo === 'efectivo')
+      .reduce((s, p) => s + (parseFloat(p.monto)||0), 0);
+    const vueltoEfec = Math.min(vuelto, efecEntregado);
+
     return v.pagos.filter(p=>parseFloat(p.monto)>0.005).map(p=>{
       const c = MET_COLORS[p.metodo]||{bg:'#f5f5f5',color:'#555'};
       const montoEntregado = parseFloat(p.monto);
-      // Si es efectivo y hay vuelto, mostrar lo que entró realmente
-      const montoReal = (p.metodo === 'efectivo' && vuelto > 0.005)
-        ? montoEntregado - vuelto
+      const montoReal = (p.metodo === 'efectivo' && vueltoEfec > 0.005)
+        ? montoEntregado - vueltoEfec
         : montoEntregado;
-      const vueltoHtml = (p.metodo === 'efectivo' && vuelto > 0.005)
-        ? ` <span style="opacity:0.7;font-weight:400;">(entregó S/${montoEntregado.toFixed(2)}, vuelto S/${vuelto.toFixed(2)})</span>`
+      const vueltoHtml = (p.metodo === 'efectivo' && vueltoEfec > 0.005)
+        ? ` <span style="opacity:0.7;font-weight:400;">(entregó S/${montoEntregado.toFixed(2)}, vuelto S/${vueltoEfec.toFixed(2)})</span>`
         : '';
       return `<span style="display:inline-flex;align-items:center;background:${c.bg};color:${c.color};border:1px solid ${c.border||'#ccc'};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-right:3px;margin-top:2px;">${MET_LABELS[p.metodo]||p.metodo} S/${montoReal.toFixed(2)}${vueltoHtml}</span>`;
     }).join('');
@@ -2063,10 +2074,12 @@ function compartirResumenHoy() {
     txt += `🌤 *TURNO MAÑANA* (11am–4pm) · ${vManana.length} venta(s)\n`;
     vManana.forEach(v => {
       const vuelto = parseFloat(v.vuelto)||0;
+      const efecEntregado = (v.pagos||[]).filter(p=>p.metodo==='efectivo').reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+      const vueltoEfec = Math.min(vuelto, efecEntregado);
       const metStr = v.pagos&&v.pagos.length
         ? v.pagos.filter(p=>p.monto>0).map(p=>{
-            const mNet = p.metodo==='efectivo'&&vuelto>0.005 ? parseFloat(p.monto)-vuelto : parseFloat(p.monto);
-            return `${p.metodo} S/${mNet.toFixed(2)}${vuelto>0.005&&p.metodo==='efectivo'?` (vuelto S/${vuelto.toFixed(2)})`:''}`;
+            const mNet = p.metodo==='efectivo'&&vueltoEfec>0.005 ? parseFloat(p.monto)-vueltoEfec : parseFloat(p.monto);
+            return `${p.metodo} S/${mNet.toFixed(2)}${vueltoEfec>0.005&&p.metodo==='efectivo'?` (vuelto S/${vueltoEfec.toFixed(2)})`:''}`;
           }).join('+')
         : 'efectivo';
       txt += `  ${v.hora} ${v.origen} → S/${v.total.toFixed(2)} [${metStr}]\n`;
@@ -2083,10 +2096,12 @@ function compartirResumenHoy() {
     txt += `🌙 *TURNO NOCHE* (5pm–12am) · ${vNoche.length} venta(s)\n`;
     vNoche.forEach(v => {
       const vuelto = parseFloat(v.vuelto)||0;
+      const efecEntregado = (v.pagos||[]).filter(p=>p.metodo==='efectivo').reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+      const vueltoEfec = Math.min(vuelto, efecEntregado);
       const metStr = v.pagos&&v.pagos.length
         ? v.pagos.filter(p=>p.monto>0).map(p=>{
-            const mNet = p.metodo==='efectivo'&&vuelto>0.005 ? parseFloat(p.monto)-vuelto : parseFloat(p.monto);
-            return `${p.metodo} S/${mNet.toFixed(2)}${vuelto>0.005&&p.metodo==='efectivo'?` (vuelto S/${vuelto.toFixed(2)})`:''}`;
+            const mNet = p.metodo==='efectivo'&&vueltoEfec>0.005 ? parseFloat(p.monto)-vueltoEfec : parseFloat(p.monto);
+            return `${p.metodo} S/${mNet.toFixed(2)}${vueltoEfec>0.005&&p.metodo==='efectivo'?` (vuelto S/${vueltoEfec.toFixed(2)})`:''}`;
           }).join('+')
         : 'efectivo';
       txt += `  ${v.hora} ${v.origen} → S/${v.total.toFixed(2)} [${metStr}]\n`;
